@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
-import { Check, Download, Music, Palette, Save, Trash2, Undo2, Upload, Volume2, VolumeX, X } from "lucide-react";
+import { Check, Download, Music, Palette, Save, Share, Smartphone, Trash2, Undo2, Upload, Volume2, VolumeX, X } from "lucide-react";
+import { APK_URL, isAndroidWeb, isIosWeb } from "./AppBanner";
 import { themeToStyle, themes, useActiveTheme, useThemeStore } from "@/themes";
 import { exportSave, useGame } from "@/store/game";
 import { useSettings } from "@/store/settings";
@@ -61,6 +62,29 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       </section>
+
+      {/* Phone browsers only: the Android app, or how to install the web app on iPhone. Never shown inside the app. */}
+      {isAndroidWeb() && (
+        <section className="mt-5 space-y-2">
+          <span className="flex items-center gap-1.5 font-bold">
+            <Smartphone size={18} /> Android app
+          </span>
+          <a href={APK_URL} download="bee-factory.apk" className="btn btn-primary w-full">
+            <Download size={18} /> Download the app (APK)
+          </a>
+          <p className="text-xs text-text-muted">Your phone may ask to allow installing apps from your browser. Your progress here stays in the browser; use Export / Import below to move it to the app.</p>
+        </section>
+      )}
+      {isIosWeb() && (
+        <section className="mt-5 space-y-2">
+          <span className="flex items-center gap-1.5 font-bold">
+            <Smartphone size={18} /> Install on iPhone
+          </span>
+          <p className="flex items-center gap-1 text-sm text-text-secondary">
+            Tap <Share size={16} /> Share, then "Add to Home Screen".
+          </p>
+        </section>
+      )}
 
       <section className="mt-5 space-y-2">
         <span className="flex items-center gap-1.5 font-bold"><Save size={18} /> Save</span>

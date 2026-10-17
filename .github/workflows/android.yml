@@ -1,27 +1,19 @@
 name: Android APK
 
+# Attaches the signed APK to every published GitHub release (the site always serves the latest one too).
 on:
   release:
     types: [published]
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: write
 
-concurrency:
-  group: android-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   apk:
     runs-on: ubuntu-latest
-    env:
-      HAS_KEYSTORE: ${{ secrets.BF_KEYSTORE_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -36,38 +28,13 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: gradle
-      # GitHub's Ubuntu runners ship the Android SDK (licenses accepted); Gradle fetches missing platforms.
-      - name: Android SDK
-        run: echo "ANDROID_HOME=$ANDROID_HOME" && ls "$ANDROID_HOME/platforms"
-
-      - name: Release builds need the signing key
-        if: github.event_name == 'release' && env.HAS_KEYSTORE != 'true'
-        run: |
-          echo "::error::Add the BF_KEYSTORE_BASE64, BF_KEYSTORE_PASSWORD, BF_KEY_ALIAS and BF_KEY_PASSWORD repository secrets."
-          exit 1
-
-      - name: Decode signing key
-        if: env.HAS_KEYSTORE == 'true'
-        run: |
-          echo "${{ secrets.BF_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
-          echo "BF_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
       - name: Build APK
         working-directory: android
-        env:
-          BF_KEYSTORE_PASSWORD: ${{ secrets.BF_KEYSTORE_PASSWORD }}
-          BF_KEY_ALIAS: ${{ secrets.BF_KEY_ALIAS }}
-          BF_KEY_PASSWORD: ${{ secrets.BF_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          if [ "$HAS_KEYSTORE" = "true" ]; then
-            ./gradlew --no-daemon assembleRelease
-            cp app/build/outputs/apk/release/app-release.apk ../bee-factory.apk
-          else
-            echo "::warning::No signing key secrets: building a debug-signed APK."
-            ./gradlew --no-daemon assembleDebug
-            cp app/build/outputs/apk/debug/app-debug.apk ../bee-factory.apk
-          fi
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk ../bee-factory.apk
 
       - uses: actions/upload-artifact@v4
         with:
