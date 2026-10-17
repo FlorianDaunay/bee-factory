@@ -399,7 +399,7 @@ function enemyPhase(state: BattleState, rng: Rng, events: BattleEvent[]) {
       if (e.bossTimer <= 0) {
         events.push({ type: "bossSkill", src: e.uid, name: e.boss.name });
         applyEffects(state, rng, e, e.boss.effects, undefined, events);
-        e.bossTimer = e.boss.every;
+        e.bossTimer = e.boss.every - 1;
         checkOutcome(state, events);
         if (state.phase !== "enemy") return;
         continue;

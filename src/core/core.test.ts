@@ -95,12 +95,36 @@ describe("battle engine", () => {
     expect(r.events.some((e) => e.type === "attack")).toBe(true);
   });
 
+  it("bosses use their big skill exactly every `every` enemy turns", () => {
+    const bossStage = STAGES["0-3"];
+    let s = createBattle(team(["pip"]), { ...bossStage, waves: [bossStage.waves.at(-1)!] }, {}, 5);
+    s.allies[0].hp = s.allies[0].maxHp = 1e9;
+    const turns: number[] = [];
+    for (let turn = 1; turn <= 9; turn++) {
+      const r = endPlayerTurn(s);
+      if (r.events.some((e) => e.type === "bossSkill")) turns.push(turn);
+      s = r.state;
+    }
+    expect(turns).toEqual([3, 6, 9]);
+  });
+
   it("revives with royal jelly", () => {
     const s0 = createBattle(team(["pip", "fr-bijou"]), stage, { royalJelly: 1 }, 1);
     s0.allies[1].hp = 0;
     const r = act(s0, { t: "item", item: "royalJelly", target: "a1" });
     expect(r.state.allies[1].hp).toBeGreaterThan(0);
     expect(r.state.items.royalJelly).toBe(0);
+  });
+});
+
+describe("auto mode", () => {
+  it("never spends items, even when bees faint", () => {
+    const items = { honeyDrop: 3, honeyJar: 2, mint: 2, royalJelly: 2, candy: 2 };
+    for (let seed = 1; seed <= 10; seed++) {
+      // A hopeless fight, so allies get low and faint: the bot must still keep every item.
+      const end = autoBattle(createBattle(team(["pip", "fr-bijou"], 1), STAGES["3-5"], items, seed));
+      expect(end.items).toEqual(items);
+    }
   });
 });
 
