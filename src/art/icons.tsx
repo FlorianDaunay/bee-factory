@@ -31,6 +31,14 @@ export function ResourceIcon({ id, size = 22 }: { id: ResourceId; size?: number 
           <circle cx="12" cy="11" r="2.5" fill="#F0FFB0" stroke="none" />
         </g>
       )}
+      {id === "ticket" && (
+        <g stroke={INK} strokeWidth="1.8" strokeLinejoin="round">
+          <path d="M3 9 H29 V13 A3 3 0 0 0 29 19 V23 H3 V19 A3 3 0 0 0 3 13 Z" fill="#FFD23F" transform="rotate(-10 16 16)" />
+          <path d="M21 9 V23" strokeDasharray="2 2" transform="rotate(-10 16 16)" />
+          <ellipse cx="12" cy="16" rx="4" ry="3.2" fill="#FFF3B0" transform="rotate(-10 16 16)" strokeWidth="1.4" />
+          <path d="M10.5 13.5 v5 M13 13.3 v5" strokeWidth="1.2" transform="rotate(-10 16 16)" />
+        </g>
+      )}
       {id === "jelly" && (
         <g stroke={INK} strokeWidth="1.8" strokeLinejoin="round">
           <rect x="7" y="10" width="18" height="18" rx="5" fill="#F7C9E0" />
@@ -106,6 +114,46 @@ const FLAGS: Record<ZoneId, JSX.Element> = {
       <rect width="30" height="30" fill="#009C3B" />
       <path d="M15 4 L28 15 L15 26 L2 15 Z" fill="#FFDF00" />
       <circle cx="15" cy="15" r="6" fill="#002776" />
+    </>
+  ),
+  moon: (
+    <>
+      <rect width="30" height="30" fill="#1B2A6B" />
+      <path d="M17 6 A10 10 0 1 0 25 20 A8 8 0 1 1 17 6 Z" fill="#F5F7FA" />
+      <circle cx="7" cy="8" r="1" fill="#FFF" />
+      <circle cx="24" cy="9" r="0.8" fill="#FFF" />
+    </>
+  ),
+  mars: (
+    <>
+      <rect width="30" height="30" fill="#2A0E0A" />
+      <circle cx="15" cy="15" r="10" fill="#D9482B" />
+      <circle cx="12" cy="12" r="2.4" fill="#A3311A" />
+      <circle cx="18" cy="18" r="1.6" fill="#A3311A" />
+    </>
+  ),
+  jupiter: (
+    <>
+      <rect width="30" height="30" fill="#1A1430" />
+      <circle cx="15" cy="15" r="11" fill="#E9C46A" />
+      <path d="M4 11 H26 M4 15 H26 M5 19 H25" stroke="#B5793B" strokeWidth="2" />
+      <ellipse cx="19" cy="18" rx="3" ry="1.8" fill="#D9482B" />
+    </>
+  ),
+  saturn: (
+    <>
+      <rect width="30" height="30" fill="#1A1430" />
+      <circle cx="15" cy="15" r="7.5" fill="#E3C878" />
+      <ellipse cx="15" cy="15" rx="13" ry="4" fill="none" stroke="#F7EBC6" strokeWidth="2" transform="rotate(-15 15 15)" />
+    </>
+  ),
+  sun: (
+    <>
+      <rect width="30" height="30" fill="#FF8A3D" />
+      <circle cx="15" cy="15" r="8" fill="#FFD23F" />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+        <path key={a} d="M15 2 V5" stroke="#FFF3B0" strokeWidth="2" transform={`rotate(${a} 15 15)`} />
+      ))}
     </>
   ),
   us: (

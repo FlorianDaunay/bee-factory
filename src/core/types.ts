@@ -1,7 +1,7 @@
 export type Rarity = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type Element = "flame" | "leaf" | "storm" | "wave" | "light" | "shadow";
 export type Role = "guardian" | "striker" | "healer" | "support" | "trickster";
-export type ZoneId = "home" | "fr" | "de" | "it" | "jp" | "in" | "eg" | "br" | "us";
+export type ZoneId = "home" | "fr" | "de" | "it" | "jp" | "in" | "eg" | "br" | "us" | "moon" | "mars" | "jupiter" | "saturn" | "sun";
 export type Continent = "home" | "europe" | "asia" | "africa" | "americas" | "space";
 
 export interface Stats {
@@ -32,12 +32,12 @@ export interface Burst {
 export type HatKind =
   | "none" | "hardhat" | "beret" | "musketeer" | "chef" | "headband" | "kitsune" | "kabuto" | "sakura"
   | "tyrolean" | "goggles" | "knight" | "straw" | "venetian" | "centurion" | "nemes" | "crown"
-  | "lotus" | "feathers" | "cap" | "cowboy" | "astronaut" | "garland" | "laurel";
+  | "lotus" | "feathers" | "cap" | "cowboy" | "astronaut" | "garland" | "laurel" | "crescent" | "ring" | "sunrays";
 
 export type HeldKind =
   | "none" | "dipper" | "baguette" | "whisk" | "pretzel" | "wrench" | "sword" | "fan" | "umbrella"
   | "tea" | "ankh" | "papyrus" | "ball" | "pizza" | "lemon" | "maraca" | "lantern" | "shield"
-  | "flower" | "torch" | "feather" | "bat" | "harp" | "lasso" | "staff";
+  | "flower" | "torch" | "feather" | "bat" | "harp" | "lasso" | "staff" | "orb";
 
 export interface BeeLook {
   body: string;
@@ -107,5 +107,6 @@ export interface EnemySpecies {
 
 export type ItemId = "honeyDrop" | "honeyJar" | "mint" | "royalJelly" | "candy";
 
-export type ResourceId = "honey" | "silver" | "pollen" | "jelly";
+/** `ticket` = free pack ticket: one ticket opens one bee from any pack. */
+export type ResourceId = "honey" | "silver" | "pollen" | "jelly" | "ticket";
 export type Resources = Record<ResourceId, number>;

@@ -189,6 +189,17 @@ function Aura({ rarity, uid }: { rarity: Rarity; uid: string }) {
       {rarity === 6 && (
         <circle cx="66" cy="72" r="60" fill="none" stroke={`url(#rb-${uid})`} strokeWidth="5" strokeDasharray="10 8" className="orbit" style={{ transformOrigin: "66px 72px" }} />
       )}
+      {rarity === 7 && (
+        <g>
+          <circle cx="66" cy="72" r="62" fill="#1B2A6B" opacity="0.35" className="aura-pulse" />
+          <circle cx="66" cy="72" r="58" fill="none" stroke="#9ED8FF" strokeWidth="2" strokeDasharray="2 9" className="orbit" style={{ transformOrigin: "66px 72px" }} />
+          <g className="flame-halo" style={{ transformOrigin: "66px 72px" }}>
+            {[0, 72, 144, 216, 288].map((a) => (
+              <circle key={a} cx={66 + 60 * Math.cos((a * Math.PI) / 180)} cy={72 + 60 * Math.sin((a * Math.PI) / 180)} r="3.5" fill="#FFF3B0" />
+            ))}
+          </g>
+        </g>
+      )}
       {rarity >= 6 && <Sparkles color={rarity === 7 ? "#BFD3FF" : "#FFFFFF"} many />}
     </g>
   );

@@ -1,5 +1,5 @@
 import { CHAPTERS, type Stage } from "./data/story";
-import type { Pack } from "./gacha";
+import { TIER2_UNLOCK_STAGE, type Pack } from "./gacha";
 
 export type Cleared = Record<string, number>;
 
@@ -21,13 +21,12 @@ export function highestChapter(cleared: Cleared): number {
   return i;
 }
 
-/** France is the starter pack; other countries open with their chapter. */
+/** Tier 1 (Earth) packs are always open; tier 2 (space) opens after the Sakura Mountains boss. */
 export function packUnlocked(cleared: Cleared, pack: Pack): boolean {
-  const zoneOpen = (z: string) => z === "fr" || CHAPTERS.some((c) => c.zone === z && chapterUnlocked(cleared, c.index));
-  if (pack.family === "country") return zoneOpen(pack.zones[0]);
-  if (pack.family === "continent") return highestChapter(cleared) >= 2 && pack.zones.some(zoneOpen);
-  return highestChapter(cleared) >= 4;
+  return pack.tier === 1 || tier2Unlocked(cleared);
 }
+
+export const tier2Unlocked = (cleared: Cleared) => cleared[TIER2_UNLOCK_STAGE] !== undefined;
 
 /** The next stage to play: the first unlocked stage not yet cleared. */
 export function nextStage(cleared: Cleared): Stage | undefined {

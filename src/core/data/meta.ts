@@ -79,6 +79,11 @@ export const ZONES: Record<ZoneId, Zone> = {
   eg: { id: "eg", name: "Egypt", continent: "africa", colors: ["#CE1126", "#FFFFFF", "#1A1A1A"], bonus: { kind: "crit", pct: 8 } },
   br: { id: "br", name: "Brazil", continent: "americas", colors: ["#009C3B", "#FFDF00", "#002776"], bonus: { kind: "atk", pct: 8 } },
   us: { id: "us", name: "USA", continent: "americas", colors: ["#B22234", "#FFFFFF", "#3C3B6E"], bonus: { kind: "gauge", pct: 8 } },
+  moon: { id: "moon", name: "Moon", continent: "space", colors: ["#1B2A6B", "#C7CEEA", "#F5F7FA"], bonus: { kind: "rec", pct: 10 } },
+  mars: { id: "mars", name: "Mars", continent: "space", colors: ["#7A1E12", "#D9482B", "#F4A261"], bonus: { kind: "atk", pct: 10 } },
+  jupiter: { id: "jupiter", name: "Jupiter", continent: "space", colors: ["#8B5E34", "#E9C46A", "#F4E3C1"], bonus: { kind: "hp", pct: 10 } },
+  saturn: { id: "saturn", name: "Saturn", continent: "space", colors: ["#3D3A66", "#E3C878", "#F7EBC6"], bonus: { kind: "def", pct: 10 } },
+  sun: { id: "sun", name: "Sun", continent: "space", colors: ["#FF6B3D", "#FFB627", "#FFF3B0"], bonus: { kind: "crit", pct: 10 } },
 };
 
 

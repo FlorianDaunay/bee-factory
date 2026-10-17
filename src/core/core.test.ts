@@ -3,8 +3,10 @@ import { autoBattle } from "./battle/autoplay";
 import { act, createBattle, endPlayerTurn, type TeamMember } from "./battle/engine";
 import { BEES, beeById } from "./data/bees";
 import { CHAPTERS, STAGES } from "./data/story";
-import { PACKS, PITY_LIMIT, emptyPity, packById, pull } from "./gacha";
-import { hiveCapacity, hiveStored, type Hive } from "./hive";
+import { PACKS, PITY_LIMIT, SPACE_ZONES, TIER2_UNLOCK_STAGE, emptyPity, packById, pull } from "./gacha";
+import { hiveCapacity, hiveSellValue, hiveStored, slotCost, type Hive } from "./hive";
+import { packUnlocked } from "./unlocks";
+import { newSave, normalizeSave, ticketDropChance } from "@/store/game";
 import { computeSynergies } from "./synergy";
 
 const team = (ids: string[], level = 1): TeamMember[] => ids.map((id) => ({ id, level, rank: 0 }));
@@ -47,6 +49,62 @@ describe("gacha", () => {
     const a = pull(PACKS[1], 10, emptyPity(), 7).bees.map((b) => b.id);
     const b = pull(PACKS[1], 10, emptyPity(), 7).bees.map((b) => b.id);
     expect(a).toEqual(b);
+  });
+});
+
+describe("packs, tiers and tickets", () => {
+  it("every space zone has bees from Rare to Celestial", () => {
+    for (const z of SPACE_ZONES) {
+      const rs = new Set(BEES.filter((b) => b.zone === z).map((b) => b.rarity));
+      for (const r of [3, 4, 5, 6, 7]) expect(rs.has(r as never), `${z} r${r}`).toBe(true);
+    }
+  });
+  it("every pack accepts one ticket per bee", () => {
+    for (const p of PACKS) expect(p.prices.some((price) => price.ticket === 1 && Object.keys(price).length === 1), p.id).toBe(true);
+  });
+  it("tier 1 is always open, tier 2 opens after the Sakura Mountains boss", () => {
+    const earth = PACKS.filter((p) => p.tier === 1);
+    const space = PACKS.filter((p) => p.tier === 2);
+    expect(space.length).toBeGreaterThan(0);
+    for (const p of earth) expect(packUnlocked({}, p)).toBe(true);
+    for (const p of space) {
+      expect(packUnlocked({}, p)).toBe(false);
+      expect(packUnlocked({ [TIER2_UNLOCK_STAGE]: 1 }, p)).toBe(true);
+    }
+    expect(STAGES[TIER2_UNLOCK_STAGE].boss).toBe(true);
+  });
+  it("tier 2 packs only give space bees, Rare or better", () => {
+    const res = pull(packById("cosmic")!, 60, emptyPity(), 3);
+    expect(res.bees.every((b) => SPACE_ZONES.includes(b.zone) && b.rarity >= 3)).toBe(true);
+  });
+  it("ticket drops grow with the chapter but stay rare", () => {
+    expect(ticketDropChance(0)).toBeLessThan(ticketDropChance(4));
+    for (let ch = 0; ch < 20; ch++) expect(ticketDropChance(ch)).toBeLessThanOrEqual(0.25);
+  });
+  it("new accounts start with 50 tickets and 3 hive slots; old saves get the tickets once", () => {
+    expect(newSave().resources.ticket).toBe(50);
+    expect(newSave().hiveSlots).toBe(3);
+    const old = normalizeSave({ resources: { honey: 1, silver: 2, pollen: 3, jelly: 4 } as never });
+    expect(old.resources.ticket).toBe(50);
+    const spent = normalizeSave({ resources: { honey: 1, silver: 2, pollen: 3, jelly: 4, ticket: 0 } });
+    expect(spent.resources.ticket).toBe(0);
+  });
+});
+
+describe("hive slots and selling", () => {
+  it("3 extra slots, each more expensive, then none", () => {
+    const a = slotCost(3)!.silver!;
+    const b = slotCost(4)!.silver!;
+    const c = slotCost(5)!.silver!;
+    expect(a).toBeLessThan(b);
+    expect(b).toBeLessThan(c);
+    expect(slotCost(6)).toBeNull();
+  });
+  it("selling refunds half of build + upgrades", () => {
+    const lv1: Hive = { id: "h", type: "box", level: 1, since: 0, workers: [] };
+    expect(hiveSellValue(lv1)).toEqual({ silver: 750, honey: 150 });
+    const lv3 = hiveSellValue({ ...lv1, level: 3 });
+    expect(lv3.silver!).toBeGreaterThan(750);
   });
 });
 

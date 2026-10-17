@@ -1,13 +1,25 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpCircle, ChevronRight, Hammer, Plus, X } from "lucide-react";
+import { ArrowUpCircle, ChevronRight, Coins, Hammer, Lock, Plus, X } from "lucide-react";
 import { BeeSprite } from "@/art/BeeSprite";
 import { GameIcon, type IconName } from "@/art/GameIcon";
 import { HiveArt } from "@/art/HiveArt";
 import { ResourceIcon } from "@/art/icons";
 import { beeById } from "@/core/data/bees";
 import { ITEMS, ITEM_IDS } from "@/core/data/meta";
-import { HIVE_ORDER, HIVE_TYPES, MAX_HIVES, WORKERS_PER_HIVE, hiveCapacity, hiveRate, hiveStored, upgradeCost, type Hive } from "@/core/hive";
+import {
+  HIVE_ORDER,
+  HIVE_TYPES,
+  MAX_HIVES,
+  WORKERS_PER_HIVE,
+  hiveCapacity,
+  hiveRate,
+  hiveSellValue,
+  hiveStored,
+  slotCost,
+  upgradeCost,
+  type Hive,
+} from "@/core/hive";
 import { RECIPES } from "@/core/kitchen";
 import { nextStage } from "@/core/unlocks";
 import { useGame } from "@/store/game";
@@ -16,6 +28,7 @@ import { BeeTile, Cost, FloatText, Modal, fmt, useNow } from "@/ui/common";
 
 export function HiveScreen() {
   const hives = useGame((s) => s.hives);
+  const hiveSlots = useGame((s) => s.hiveSlots);
   const collectAll = useGame((s) => s.collectAll);
   const now = useNow(1000);
   const [pop, setPop] = useState<{ key: number; amount: number } | null>(null);
@@ -26,7 +39,12 @@ export function HiveScreen() {
       <PipGreeting />
 
       <section className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-xl font-extrabold"><GameIcon name="hive" size={26} /> Hives</h2>
+        <h2 className="flex items-center gap-2 text-xl font-extrabold">
+          <GameIcon name="hive" size={26} /> Hives
+          <span className="badge bg-accent/20 num" title="Used / unlocked slots">
+            {hives.length}/{hiveSlots}
+          </span>
+        </h2>
         <div className="relative">
           <button
             className="btn btn-primary"
@@ -48,9 +66,18 @@ export function HiveScreen() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {hives.map((h) => (
-          <HiveCard key={h.id} hive={h} now={now} />
+          <HiveCard key={h.id} hive={h} now={now} canSell={hives.length > 1} />
         ))}
-        {hives.length < MAX_HIVES && <BuildCard />}
+        {/* Open slots can take a new hive; the next locked slot can be bought (one at a time). */}
+        {Array.from({ length: hiveSlots - hives.length }, (_, i) => (
+          <BuildCard key={`free-${i}`} />
+        ))}
+        {hiveSlots < MAX_HIVES && <SlotCard />}
+        {Array.from({ length: Math.max(0, MAX_HIVES - hiveSlots - 1) }, (_, i) => (
+          <div key={`locked-${i}`} className="card flex min-h-[150px] items-center justify-center border-dashed p-3 text-text-muted opacity-50">
+            <Lock size={28} />
+          </div>
+        ))}
       </div>
 
       <Kitchen />
@@ -59,15 +86,15 @@ export function HiveScreen() {
 }
 
 function PipGreeting() {
-  const freePack = useGame((s) => s.freePack);
+  const tickets = useGame((s) => s.resources.ticket);
   const cleared = useGame((s) => s.cleared);
   const team = useGame((s) => s.team.filter(Boolean).length);
   const next = nextStage(cleared);
   const pip = beeById("pip");
 
   // Pip points at the most useful next thing, with icons more than words.
-  const hint: { to: string; icon: IconName; text: string } = freePack
-    ? { to: "/summon", icon: "summon", text: "A free pack is waiting!" }
+  const hint: { to: string; icon: IconName; text: string } = tickets > 0
+    ? { to: "/summon", icon: "summon", text: `You have ${fmt(tickets)} free pack tickets!` }
     : team < 3
       ? { to: "/summon", icon: "summon", text: "Recruit more bees!" }
       : next
@@ -87,13 +114,14 @@ function PipGreeting() {
   );
 }
 
-function HiveCard({ hive, now }: { hive: Hive; now: number }) {
+function HiveCard({ hive, now, canSell }: { hive: Hive; now: number; canSell: boolean }) {
   const collect = useGame((s) => s.collectHive);
   const upgrade = useGame((s) => s.upgradeHive);
   const canAfford = useGame((s) => s.canAfford);
   const [pop, setPop] = useState<{ key: number; amount: number } | null>(null);
   const [picking, setPicking] = useState<number | null>(null);
   const [squish, setSquish] = useState(0);
+  const [selling, setSelling] = useState(false);
 
   const t = HIVE_TYPES[hive.type];
   const stored = hiveStored(hive, now);
@@ -120,7 +148,14 @@ function HiveCard({ hive, now }: { hive: Hive; now: number }) {
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate font-extrabold">{t.name}</span>
-            <span className="badge bg-accent/20">Lv {hive.level}</span>
+            <span className="flex items-center gap-1">
+              <span className="badge bg-accent/20">Lv {hive.level}</span>
+              {canSell && (
+                <button className="btn btn-sm !min-h-0 !px-1.5 !py-0.5" onClick={() => setSelling(true)} title="Sell this hive" aria-label="Sell this hive">
+                  <Coins size={14} />
+                </button>
+              )}
+            </span>
           </div>
           <div className="relative h-5 overflow-hidden rounded-pill border border-border bg-canvas">
             <div className="h-full rounded-pill transition-[width] duration-700" style={{ width: `${fill * 100}%`, background: "linear-gradient(90deg,#F5B301,#FFD86B)" }} />
@@ -160,6 +195,7 @@ function HiveCard({ hive, now }: { hive: Hive; now: number }) {
       </div>
 
       {picking !== null && <WorkerPicker hive={hive} slot={picking} onClose={() => setPicking(null)} />}
+      {selling && <SellHive hive={hive} onClose={() => setSelling(false)} />}
     </div>
   );
 }
@@ -220,6 +256,58 @@ function WorkerPicker({ hive, slot, onClose }: { hive: Hive; slot: number; onClo
         <span className="flex items-center gap-1"><PerkIcon perk="jelly" size={14} /> jelly</span>
       </div>
     </Modal>
+  );
+}
+
+function SellHive({ hive, onClose }: { hive: Hive; onClose: () => void }) {
+  const sell = useGame((s) => s.sellHive);
+  const value = hiveSellValue(hive);
+  return (
+    <Modal onClose={onClose}>
+      <h3 className="mb-3 flex items-center gap-2 text-lg font-extrabold">
+        <Coins size={22} /> Sell {HIVE_TYPES[hive.type].name} (Lv {hive.level})?
+      </h3>
+      <div className="flex items-center gap-3">
+        <HiveArt type={hive.type} fill={0} size={72} />
+        <div className="space-y-1 text-sm">
+          <div className="flex items-center gap-2 font-bold">
+            You get back <Cost cost={value} />
+          </div>
+          <div className="text-text-secondary">Honey inside is collected first. Its worker bees go back to rest.</div>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button className="btn" onClick={onClose}>
+          Keep it
+        </button>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            if (sell(hive.id)) onClose();
+          }}
+        >
+          <Coins size={16} /> Sell
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+/** The next hive slot, bought one at a time; each one costs more. */
+function SlotCard() {
+  const hiveSlots = useGame((s) => s.hiveSlots);
+  const buy = useGame((s) => s.buyHiveSlot);
+  const canAfford = useGame((s) => s.canAfford);
+  const cost = slotCost(hiveSlots);
+  if (!cost) return null;
+  return (
+    <div className="card flex min-h-[150px] flex-col items-center justify-center gap-2 border-dashed p-3 text-text-muted">
+      <Lock size={30} />
+      <span className="font-bold">Hive slot {hiveSlots + 1}</span>
+      <button className="btn btn-sm" disabled={!canAfford(cost)} onClick={buy}>
+        Unlock <Cost cost={cost} />
+      </button>
+    </div>
   );
 }
 

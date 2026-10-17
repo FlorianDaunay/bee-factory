@@ -207,6 +207,30 @@ export function Hat({ kind, c1, c2 }: { kind: HatKind; c1: string; c2?: string }
           ))}
         </g>
       );
+    case "crescent":
+      return (
+        <g {...s}>
+          <path d="M-4 -30 A17 17 0 1 0 14 0 A13 13 0 1 1 -4 -30 Z" fill={c1} />
+          <circle cx="10" cy="-24" r="2.5" fill="#FFF3B0" stroke="none" className="lamp-glow" />
+        </g>
+      );
+    case "ring":
+      return (
+        <g {...s}>
+          <ellipse cx="0" cy="-2" rx="32" ry="8" fill="none" stroke={INK} strokeWidth="7" transform="rotate(-12)" />
+          <ellipse cx="0" cy="-2" rx="32" ry="8" fill="none" stroke={c1} strokeWidth="4" transform="rotate(-12)" />
+          <circle cx="-22" cy="-6" r="3" fill={c2 ?? "#FFFFFF"} />
+        </g>
+      );
+    case "sunrays":
+      return (
+        <g {...s} strokeWidth={1.8}>
+          {[-60, -35, -12, 12, 35, 60].map((a, i) => (
+            <path key={a} d="M-5 0 L0 -24 L5 0 Z" fill={i % 2 ? (c2 ?? c1) : c1} transform={`rotate(${a}) translate(0 -2)`} />
+          ))}
+          <path d="M-18 4 Q0 -8 18 4" fill="none" stroke={c1} strokeWidth="6" />
+        </g>
+      );
     default:
       return null;
   }
@@ -387,6 +411,14 @@ export function Held({ kind, c }: { kind: HeldKind; c?: string }) {
         <g {...s} fill="none" stroke={col} strokeWidth="3">
           <ellipse cx="2" cy="-22" rx="12" ry="8" className="spin-slow" />
           <path d="M0 6 Q-6 -6 -6 -16" />
+        </g>
+      );
+    case "orb":
+      return (
+        <g {...s}>
+          <circle cx="0" cy="-16" r="13" fill={col} opacity="0.35" stroke="none" className="lamp-glow" />
+          <circle cx="0" cy="-16" r="9" fill={col} />
+          <path d="M-4 -20 q3 -3 7 -1" stroke="#FFFFFF" strokeWidth="2.5" fill="none" />
         </g>
       );
     case "staff":

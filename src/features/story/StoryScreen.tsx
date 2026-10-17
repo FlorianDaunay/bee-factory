@@ -132,7 +132,7 @@ function StagePreview({ stage, onClose }: { stage: Stage; onClose: () => void })
         {first && (
           <>
             <span className="badge bg-danger text-white">1st clear</span>
-            {(["silver", "honey", "jelly"] as const)
+            {(["ticket", "silver", "honey", "jelly"] as const)
               .filter((k) => stage.firstClear[k])
               .map((k) => (
                 <span key={k} className="chip num">

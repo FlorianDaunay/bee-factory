@@ -54,7 +54,7 @@ function Shell() {
 function BottomNav() {
   const now = useNow(5000);
   const hives = useGame((s) => s.hives);
-  const freePack = useGame((s) => s.freePack);
+  const tickets = useGame((s) => s.resources.ticket);
   const fresh = useGame((s) => s.fresh.length);
   const cleared = useGame((s) => s.cleared);
   const team = useGame((s) => s.team);
@@ -63,7 +63,7 @@ function BottomNav() {
 
   const tabs: { to: string; icon: IconName; label: string; dot: boolean }[] = [
     { to: "/", icon: "hive", label: "Hive", dot: honeyReady },
-    { to: "/summon", icon: "summon", label: "Summon", dot: freePack },
+    { to: "/summon", icon: "summon", label: "Summon", dot: tickets > 0 },
     { to: "/bees", icon: "bees", label: "Bees", dot: fresh > 0 },
     { to: "/story", icon: "story", label: "Story", dot: storyReady },
     { to: "/arena", icon: "arena", label: "Arena", dot: false },

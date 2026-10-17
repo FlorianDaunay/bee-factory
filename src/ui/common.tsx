@@ -69,7 +69,7 @@ export function ResourceBar({ onSettings }: { onSettings: () => void }) {
     <header className="safe-top sticky top-0 z-30 border-b border-border bg-surface/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center gap-1.5 px-3 py-1.5">
         <div className="no-scrollbar flex flex-1 items-center gap-1.5 overflow-x-auto">
-          {(["honey", "silver", "pollen", "jelly"] as const).map((k) => (
+          {(["ticket", "honey", "silver", "pollen", "jelly"] as const).map((k) => (
             <span key={k} className="chip num shrink-0" title={k}>
               <ResourceIcon id={k} size={20} />
               {fmt(r[k])}

@@ -88,7 +88,7 @@ function buildStage(ch: ChapterInput, chapter: number, index: number): Stage {
       honey: 15 + chapter * 10,
     },
     firstClear: last
-      ? { silver: 300 + chapter * 200, jelly: 2, items: { royalJelly: 1, honeyJar: 1 } }
+      ? { silver: 300 + chapter * 200, jelly: 2, ticket: Math.min(3, 1 + Math.floor(chapter / 3)), items: { royalJelly: 1, honeyJar: 1 } }
       : { silver: 100 + chapter * 50, honey: 50 + chapter * 20, items: index % 2 === 0 ? { honeyDrop: 2 } : { candy: 1 } },
   };
 }

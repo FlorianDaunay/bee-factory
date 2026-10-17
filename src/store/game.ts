@@ -4,7 +4,19 @@ import { beeById } from "@/core/data/bees";
 import { STAGES } from "@/core/data/story";
 import { RARITY } from "@/core/data/meta";
 import { emptyPity, packById, pull, type Pity } from "@/core/gacha";
-import { HIVE_TYPES, MAX_HIVES, WORKERS_PER_HIVE, hiveExtras, hiveStored, upgradeCost, type Hive, type HiveType } from "@/core/hive";
+import {
+  HIVE_TYPES,
+  MAX_HIVES,
+  START_HIVE_SLOTS,
+  WORKERS_PER_HIVE,
+  hiveExtras,
+  hiveSellValue,
+  hiveStored,
+  slotCost,
+  upgradeCost,
+  type Hive,
+  type HiveType,
+} from "@/core/hive";
 import { RECIPES } from "@/core/kitchen";
 import {
   MAX_RANK,
@@ -16,8 +28,8 @@ import {
   xpForLevel,
   type OwnedBee,
 } from "@/core/progression";
-import { randomSeed } from "@/core/rng";
-import type { BeeSpecies, ItemId, Resources } from "@/core/types";
+import { Rng, randomSeed } from "@/core/rng";
+import type { BeeSpecies, ItemId, ResourceId, Resources } from "@/core/types";
 import { packUnlocked } from "@/core/unlocks";
 
 export const TEAM_SIZE = 6;
@@ -32,7 +44,8 @@ export interface GameSave {
   cleared: Record<string, number>;
   pity: Pity;
   rng: number;
-  freePack: boolean;
+  /** Hive slots unlocked (3 at start, up to MAX_HIVES). */
+  hiveSlots: number;
   /** Bees pulled but not yet looked at in the collection. */
   fresh: string[];
 }
@@ -57,8 +70,10 @@ interface Actions {
   collectAll: () => number;
   upgradeHive: (id: string) => boolean;
   buildHive: (type: HiveType) => boolean;
+  sellHive: (id: string) => boolean;
+  buyHiveSlot: () => boolean;
   setWorker: (hiveId: string, slot: number, beeId: string | null) => void;
-  openPack: (packId: string, count: number, priceIndex: number | "free") => PullOutcome | null;
+  openPack: (packId: string, count: number, priceIndex: number) => PullOutcome | null;
   levelUp: (id: string) => boolean;
   rankUp: (id: string) => boolean;
   sellDupe: (id: string) => boolean;
@@ -70,9 +85,12 @@ interface Actions {
   reset: () => void;
 }
 
+export const STARTING_TICKETS = 50;
+
 export function newSave(now = Date.now()): GameSave {
   return {
-    resources: { honey: 150, silver: 600, pollen: 200, jelly: 0 },
+    // New accounts start with 50 free pack tickets, usable on any pack.
+    resources: { honey: 150, silver: 600, pollen: 200, jelly: 0, ticket: STARTING_TICKETS },
     bees: { pip: newOwnedBee("pip") },
     team: ["pip", null, null, null, null, null],
     hives: [{ id: "h1", type: "skep", level: 1, since: now - 30 * 60000, workers: ["pip"] }],
@@ -80,7 +98,7 @@ export function newSave(now = Date.now()): GameSave {
     cleared: {},
     pity: emptyPity(),
     rng: randomSeed(),
-    freePack: true,
+    hiveSlots: START_HIVE_SLOTS,
     fresh: [],
   };
 }
@@ -90,6 +108,8 @@ export function normalizeSave(raw: Partial<GameSave>): GameSave {
   const base = newSave();
   const save: GameSave = { ...base, ...raw } as GameSave;
   save.resources = { ...base.resources, ...raw.resources };
+  // Saves from before tickets existed get the same welcome tickets as a new account, once.
+  if (raw.resources && raw.resources.ticket === undefined) save.resources.ticket = STARTING_TICKETS;
   save.items = { ...base.items, ...raw.items };
   save.pity = { ...base.pity, ...raw.pity };
   save.bees = Object.fromEntries(
@@ -105,15 +125,18 @@ export function normalizeSave(raw: Partial<GameSave>): GameSave {
   if (!save.bees.pip) save.bees.pip = newOwnedBee("pip");
   save.team = Array.from({ length: TEAM_SIZE }, (_, i) => (save.team?.[i] && save.bees[save.team[i]!] ? save.team[i] : null));
   save.hives = (save.hives?.length ? save.hives : base.hives).map((h) => ({ ...h, workers: h.workers.filter((w) => save.bees[w]) }));
+  save.hiveSlots = Math.min(MAX_HIVES, Math.max(START_HIVE_SLOTS, raw.hiveSlots ?? 0, save.hives.length));
+  delete (save as Partial<GameSave> & { freePack?: boolean }).freePack;
   return save;
 }
 
-const add = (r: Resources, d: Partial<Resources>, sign = 1): Resources => ({
-  honey: r.honey + sign * (d.honey ?? 0),
-  silver: r.silver + sign * (d.silver ?? 0),
-  pollen: r.pollen + sign * (d.pollen ?? 0),
-  jelly: r.jelly + sign * (d.jelly ?? 0),
-});
+const RESOURCE_IDS: ResourceId[] = ["honey", "silver", "pollen", "jelly", "ticket"];
+
+const add = (r: Resources, d: Partial<Resources>, sign = 1): Resources =>
+  Object.fromEntries(RESOURCE_IDS.map((k) => [k, (r[k] ?? 0) + sign * (d[k] ?? 0)])) as Resources;
+
+/** Chance that a won fight drops a pack ticket: grows with the chapter, capped so tickets stay special. */
+export const ticketDropChance = (chapter: number) => Math.min(0.25, 0.04 + chapter * 0.025);
 
 const affordable = (r: Resources, cost: Partial<Resources>) =>
   (Object.keys(cost) as (keyof Resources)[]).every((k) => r[k] >= (cost[k] ?? 0));
@@ -158,9 +181,27 @@ export const useGame = create<GameSave & Actions>()(
       buildHive: (type) => {
         const s = get();
         const cost = HIVE_TYPES[type].buildCost;
-        if (s.hives.length >= MAX_HIVES || !affordable(s.resources, cost)) return false;
+        if (s.hives.length >= s.hiveSlots || !affordable(s.resources, cost)) return false;
         const id = `h${Date.now().toString(36)}`;
         set({ resources: add(s.resources, cost, -1), hives: [...s.hives, { id, type, level: 1, since: Date.now(), workers: [] }] });
+        return true;
+      },
+
+      sellHive: (id) => {
+        const s = get();
+        const hive = s.hives.find((h) => h.id === id);
+        // The last hive can never be sold.
+        if (!hive || s.hives.length <= 1) return false;
+        get().collectHive(id);
+        set((st) => ({ resources: add(st.resources, hiveSellValue(hive)), hives: st.hives.filter((h) => h.id !== id) }));
+        return true;
+      },
+
+      buyHiveSlot: () => {
+        const s = get();
+        const cost = slotCost(s.hiveSlots);
+        if (!cost || !affordable(s.resources, cost)) return false;
+        set({ resources: add(s.resources, cost, -1), hiveSlots: s.hiveSlots + 1 });
         return true;
       },
 
@@ -186,18 +227,12 @@ export const useGame = create<GameSave & Actions>()(
         const s = get();
         const pack = packById(packId);
         if (!pack || !packUnlocked(s.cleared, pack)) return null;
-        let resources = s.resources;
-        if (priceIndex === "free") {
-          if (!s.freePack || count !== 1) return null;
-        } else {
-          const unit = pack.prices[priceIndex];
-          if (!unit) return null;
-          const cost = Object.fromEntries(Object.entries(unit).map(([k, v]) => [k, (v ?? 0) * count])) as Partial<Resources>;
-          if (!affordable(resources, cost)) return null;
-          resources = add(resources, cost, -1);
-        }
-        // The very first pack is a guaranteed Rare from France, to start with a real team.
-        const res = priceIndex === "free" ? pull({ ...pack, floor: 3 }, 1, s.pity, s.rng) : pull(pack, count, s.pity, s.rng);
+        const unit = pack.prices[priceIndex];
+        if (!unit) return null;
+        const cost = Object.fromEntries(Object.entries(unit).map(([k, v]) => [k, (v ?? 0) * count])) as Partial<Resources>;
+        if (!affordable(s.resources, cost)) return null;
+        const resources = add(s.resources, cost, -1);
+        const res = pull(pack, count, s.pity, s.rng);
         const bees = { ...s.bees };
         const firsts: string[] = [];
         for (const b of res.bees) {
@@ -219,7 +254,6 @@ export const useGame = create<GameSave & Actions>()(
           team,
           pity: res.pity,
           rng: res.rngState,
-          freePack: priceIndex === "free" ? false : s.freePack,
           fresh: [...new Set([...s.fresh, ...firsts])],
         });
         return { bees: res.bees, firsts };
@@ -293,7 +327,7 @@ export const useGame = create<GameSave & Actions>()(
         const rewards: Partial<Resources> = { ...stage.rewards };
         const gotItems: Partial<Record<ItemId, number>> = {};
         if (firstClear) {
-          for (const k of ["honey", "silver", "pollen", "jelly"] as const) {
+          for (const k of RESOURCE_IDS) {
             if (stage.firstClear[k]) rewards[k] = (rewards[k] ?? 0) + stage.firstClear[k]!;
           }
           for (const [k, v] of Object.entries(stage.firstClear.items ?? {})) {
@@ -301,8 +335,12 @@ export const useGame = create<GameSave & Actions>()(
             gotItems[k as ItemId] = v;
           }
         }
+        // Sometimes a ticket drops: a little more often in later chapters, never too often.
+        const rng = new Rng(s.rng);
+        if (rng.chance(ticketDropChance(stage.chapter))) rewards.ticket = (rewards.ticket ?? 0) + 1;
         set({
           items,
+          rng: rng.state,
           resources: add(s.resources, rewards),
           cleared: { ...s.cleared, [stageId]: Math.max(stars, s.cleared[stageId] ?? 0) },
         });
@@ -328,8 +366,8 @@ export const useGame = create<GameSave & Actions>()(
       name: "beefactory-save",
       version: SAVE_VERSION,
       partialize: (s) => {
-        const { resources, bees, team, hives, items, cleared, pity, rng, freePack, fresh } = s;
-        return { resources, bees, team, hives, items, cleared, pity, rng, freePack, fresh };
+        const { resources, bees, team, hives, items, cleared, pity, rng, hiveSlots, fresh } = s;
+        return { resources, bees, team, hives, items, cleared, pity, rng, hiveSlots, fresh };
       },
       merge: (persisted, current) => ({ ...current, ...normalizeSave((persisted ?? {}) as Partial<GameSave>) }),
     },
@@ -338,6 +376,6 @@ export const useGame = create<GameSave & Actions>()(
 
 export function exportSave(): string {
   const s = useGame.getState();
-  const { resources, bees, team, hives, items, cleared, pity, rng, freePack, fresh } = s;
-  return JSON.stringify({ v: SAVE_VERSION, save: { resources, bees, team, hives, items, cleared, pity, rng, freePack, fresh } });
+  const { resources, bees, team, hives, items, cleared, pity, rng, hiveSlots, fresh } = s;
+  return JSON.stringify({ v: SAVE_VERSION, save: { resources, bees, team, hives, items, cleared, pity, rng, hiveSlots, fresh } });
 }

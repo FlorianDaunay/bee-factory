@@ -77,3 +77,22 @@ export function upgradeCost(hive: Hive): Partial<Resources> | null {
   const base = (t.buildCost.silver ?? 200) * 0.5;
   return { silver: Math.round(base * hive.level ** 1.3), honey: Math.round(20 * t.rate * hive.level ** 1.2) };
 }
+
+/** Hive slots: 3 to start with, 3 more can be bought one by one. */
+export const START_HIVE_SLOTS = 3;
+
+/** Price of the next hive slot, or null when all slots are open. */
+export function slotCost(currentSlots: number): Partial<Resources> | null {
+  const costs: Partial<Resources>[] = [{ silver: 2000 }, { silver: 8000, honey: 1000 }, { silver: 25000, honey: 4000, jelly: 3 }];
+  return costs[currentSlots - START_HIVE_SLOTS] ?? null;
+}
+
+/** Selling gives back half of what the hive cost (building + upgrades). */
+export function hiveSellValue(hive: Hive): Partial<Resources> {
+  const total: Partial<Resources> = { ...HIVE_TYPES[hive.type].buildCost };
+  for (let level = 1; level < hive.level; level++) {
+    const c = upgradeCost({ ...hive, level }) ?? {};
+    for (const [k, v] of Object.entries(c) as [keyof Resources, number][]) total[k] = (total[k] ?? 0) + v;
+  }
+  return Object.fromEntries(Object.entries(total).map(([k, v]) => [k, Math.floor((v ?? 0) / 2)]).filter(([, v]) => (v as number) > 0));
+}
