@@ -51,10 +51,12 @@ Lore is told through short wordless cutscenes (two or three panels) and a one-li
 | **Silver** | shiny silver coin with a bee | silver `#C9D3DD` + white glint | stage rewards, arena, selling duplicates, daily tasks | packs, leveling, hive building |
 | **Pollen** | yellow-green ball | `#C7E04A` | stages | experience for bees (feed it to level up) |
 | **Royal Jelly** | pink-white jar | `#F7C9E0` | rare: first clears, boss rewards, achievements | premium packs, revive consumable, star-up |
+| **Pack ticket** | golden ticket with a bee | `#FFD23F` | 50 for a new account; boss first clears (1-3); sometimes dropped by won fights (4% early, up to 25% later) | 1 ticket = 1 bee from any pack |
 
 Honey is gold, so **silver** is the money, as you asked. No real-money currency is planned. If one is ever added, it would be Royal Jelly.
 
 ### Hives (farming)
+- **3 hive slots** at the start; 3 more can be bought one at a time, each more expensive (6 max). Any hive except the last one can be sold for half of what it cost (build + upgrades).
 - Hives fill with honey over time, offline included (up to a storage cap). Tap a hive to collect, with a satisfying drip animation.
 - Hive types unlock with progress: **Straw Skep** → **Wooden Box** → **Clay Pot** → **Crystal Comb** → **Moon Comb** → **Sun Comb**. Upgrades raise output and storage.
 - **Bee utilities:** every bee has a **Work** stat and one utility perk. Assign up to 3 bees to a hive as workers. Example perks: "+20% honey", "+storage", "chance of Royal Jelly", "makes Pollen". Bees on hive duty can still fight, so you never have to choose. This gives weak but cute Common bees a long-term purpose.
@@ -129,15 +131,22 @@ Each **zone** is a real-world country with its own pack. Bees from a zone share 
 | **Sun** | Space | white-gold, coral | solar crown, flare cape | The Corona |
 
 ### Packs (gacha)
+Every pack also accepts **1 ticket per bee**.
+
+**Tier 1 · Earth** (always open, no story lock)
 | Pack | Pool | Cost | Notes |
 | --- | --- | --- | --- |
-| **Country pack** | one zone | Honey **or** Silver | the main pack; unlocks when that chapter starts |
-| **Continent pack** | every zone of a continent | Honey **+** Silver | better Epic rate |
-| **World pack** | every Earth zone | Honey + Silver + Royal Jelly | guaranteed Rare or better |
-| **Cosmic pack** | Moon, planets, Sun | Royal Jelly + lots of Honey | late game; only pack with Celestials |
-| **×10 pull** | any pack | ×10 price | guaranteed Epic or better |
+| **Country pack** | one country | Honey **or** Silver | Common to Legendary |
+| **Continent pack** | every country of a continent | Honey **+** Silver | better Epic rate |
+| **World pack** | every Earth country | Honey + Silver + Royal Jelly | guaranteed Rare or better |
 
-Base drop rates (Earth packs): Common 50%, Uncommon 28%, Rare 15%, Epic 5.5%, Legendary 1.3%, Mythic 0.2%.
+**Tier 2 · Space** (opens after the Sakura Mountains boss, stage 2-5)
+| Pack | Pool | Cost | Notes |
+| --- | --- | --- | --- |
+| **Planet pack** | Moon, Mars, Jupiter, Saturn or Sun | Honey + Silver | Rare to Celestial |
+| **Cosmic pack** | every space zone | Honey + Silver + Royal Jelly | best Celestial rate |
+
+**×10 pull:** guarantees Epic or better. Earth rates: Common 50%, Uncommon 28%, Rare 15%, Epic 5.5%, Legendary 1.3%, Mythic 0.2%. Planet rates: Rare 58%, Epic 28%, Legendary 10%, Mythic 3%, Celestial 1%.
 **Pity:** a guaranteed Legendary after 80 pulls without one, counted per pack family.
 Every pack shows its rates and full bee list behind an "i" button.
 
