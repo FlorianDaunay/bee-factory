@@ -45,6 +45,11 @@ export function elementMultiplier(a: Element, d: Element): number {
   return 1;
 }
 
+/** The element that deals bonus damage to `defender` (shown as "weak to" in battle). */
+export function weaknessOf(defender: Element): Element {
+  return (Object.keys(STRONG_AGAINST) as Element[]).find((a) => STRONG_AGAINST[a] === defender)!;
+}
+
 export const ROLES: Record<Role, { name: string }> = {
   guardian: { name: "Guardian" },
   striker: { name: "Striker" },
