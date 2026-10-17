@@ -1,0 +1,193 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    border-style: var(--border-style);
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-canvas text-text-primary font-sans antialiased;
+    background-image: var(--effect-canvas-image);
+    background-attachment: fixed;
+    background-size: cover;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+    user-select: none;
+  }
+  :focus-visible {
+    outline: var(--focus-width) solid rgb(var(--color-accent));
+    outline-offset: var(--focus-offset);
+  }
+  button {
+    touch-action: manipulation;
+  }
+}
+
+@layer components {
+  .surface {
+    @apply bg-surface border border-border;
+    backdrop-filter: var(--effect-surface-backdrop);
+  }
+  .card {
+    @apply surface rounded-card shadow-card;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-control border border-border bg-surface px-4 py-2 font-bold shadow-control transition-transform duration-75 select-none;
+    min-height: 44px;
+  }
+  .btn:hover:not(:disabled) {
+    @apply bg-surface-hover;
+  }
+  .btn:active:not(:disabled) {
+    box-shadow: var(--shadow-inset);
+    transform: translateY(2px) scale(0.98);
+  }
+  .btn:disabled {
+    @apply opacity-45 cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply bg-accent text-accent-foreground border-transparent;
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply bg-accent-hover;
+  }
+  .btn-sm {
+    @apply px-3 py-1 text-sm;
+    min-height: 34px;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-xs font-bold;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-pill border border-border bg-surface px-2.5 py-1 text-sm font-bold;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ------------------------------------------------------------ sprites */
+@keyframes bee-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes bee-wings {
+  0%, 100% { transform: rotate(0deg) scaleY(1); }
+  50% { transform: rotate(-12deg) scaleY(0.82); }
+}
+@keyframes shadow-pulse {
+  0%, 100% { transform: scaleX(1); opacity: 0.12; }
+  50% { transform: scaleX(0.85); opacity: 0.08; }
+}
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+@keyframes aura-pulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.3); }
+  50% { opacity: 1; transform: scale(1); }
+}
+@keyframes flicker {
+  0%, 100% { transform: scaleY(1) skewX(0); }
+  33% { transform: scaleY(1.08) skewX(3deg); }
+  66% { transform: scaleY(0.94) skewX(-3deg); }
+}
+@keyframes steam {
+  0% { opacity: 0; transform: translateY(4px); }
+  50% { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+@keyframes shake {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-12deg); }
+  75% { transform: rotate(12deg); }
+}
+@keyframes glow {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.55; }
+}
+@keyframes eye-glow {
+  0%, 100% { filter: drop-shadow(0 0 1px #c77dff); }
+  50% { filter: drop-shadow(0 0 5px #c77dff); }
+}
+@keyframes moth-wings {
+  0%, 100% { transform: rotate(0); }
+  50% { transform: rotate(-10deg); }
+}
+
+.bee-bob { animation: bee-bob 2.2s ease-in-out infinite; }
+.enemy-bob { animation: bee-bob 2.6s ease-in-out infinite reverse; }
+.bee-wings { animation: bee-wings 0.18s linear infinite; transform-box: view-box; }
+.moth-wings { animation: moth-wings 0.9s ease-in-out infinite; transform-box: view-box; }
+.bee-shadow { animation: shadow-pulse 2.2s ease-in-out infinite; transform-origin: 62px 128px; }
+.bee-blink { animation: blink 4.5s infinite; transform-box: view-box; }
+.aura-pulse { animation: aura-pulse 2.4s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.orbit { animation: spin 7s linear infinite; transform-box: view-box; }
+.flame-halo { animation: spin 14s linear infinite; transform-box: view-box; }
+.twinkle { animation: twinkle 2.2s ease-in-out infinite; transform-box: view-box; }
+.flicker { animation: flicker 0.35s ease-in-out infinite; transform-origin: bottom; transform-box: fill-box; }
+.steam { animation: steam 1.8s ease-in-out infinite; }
+.shake { animation: shake 0.5s ease-in-out infinite; transform-origin: 0 6px; transform-box: view-box; }
+.lamp-glow { animation: glow 1.6s ease-in-out infinite; }
+.eye-glow { animation: eye-glow 1.8s ease-in-out infinite; }
+.spin-slow { animation: spin 3s linear infinite; transform-origin: center; transform-box: fill-box; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bee-bob, .enemy-bob, .bee-wings, .moth-wings, .orbit, .flame-halo, .twinkle, .flicker, .aura-pulse, .shake, .spin-slow {
+    animation: none !important;
+  }
+}
+
+/* ------------------------------------------------------------ UI motion */
+@keyframes pop-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes float-up {
+  0% { transform: translate(-50%, 0) scale(0.8); opacity: 0; }
+  15% { transform: translate(-50%, -10px) scale(1.15); opacity: 1; }
+  100% { transform: translate(-50%, -60px) scale(1); opacity: 0; }
+}
+@keyframes squish {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.08, 0.92); }
+  100% { transform: scale(1); }
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes red-dot {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+}
+.animate-pop { animation: pop-in 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.animate-fade { animation: fade-in 0.2s ease-out both; }
+.animate-slide-up { animation: slide-up 0.25s ease-out both; }
+.animate-squish { animation: squish 0.3s ease-out; }
+.float-text { animation: float-up 1s ease-out forwards; }
+.red-dot { animation: red-dot 1.2s ease-in-out infinite; }
+
+/* honey fill wave in hives */
+@keyframes honey-wave {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.honey-wave { animation: honey-wave 3s linear infinite; }
+
+/* hide scrollbars on horizontal strips */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+.safe-top { padding-top: max(env(safe-area-inset-top), 0.25rem); }
