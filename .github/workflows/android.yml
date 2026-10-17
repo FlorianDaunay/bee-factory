@@ -1,0 +1,79 @@
+name: Android APK
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.BF_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx cap sync android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+
+      - name: Release builds need the signing key
+        if: github.event_name == 'release' && env.HAS_KEYSTORE != 'true'
+        run: |
+          echo "::error::Add the BF_KEYSTORE_BASE64, BF_KEYSTORE_PASSWORD, BF_KEY_ALIAS and BF_KEY_PASSWORD repository secrets."
+          exit 1
+
+      - name: Decode signing key
+        if: env.HAS_KEYSTORE == 'true'
+        run: |
+          echo "${{ secrets.BF_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "BF_KEYSTORE_FILE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: android
+        env:
+          BF_KEYSTORE_PASSWORD: ${{ secrets.BF_KEYSTORE_PASSWORD }}
+          BF_KEY_ALIAS: ${{ secrets.BF_KEY_ALIAS }}
+          BF_KEY_PASSWORD: ${{ secrets.BF_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          if [ "$HAS_KEYSTORE" = "true" ]; then
+            ./gradlew --no-daemon assembleRelease
+            cp app/build/outputs/apk/release/app-release.apk ../bee-factory.apk
+          else
+            echo "::warning::No signing key secrets: building a debug-signed APK."
+            ./gradlew --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk ../bee-factory.apk
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bee-factory-apk
+          path: bee-factory.apk
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" bee-factory.apk --clobber

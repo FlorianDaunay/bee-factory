@@ -1,14 +1,14 @@
 import { Download, Smartphone, X } from "lucide-react";
+import { isNativeApp } from "@/native";
 import { useSettings } from "@/store/settings";
 
-/** Where the Android build is published (GitHub release asset). */
+/** The Android workflow attaches this file to every published GitHub release. */
 export const APK_URL = "https://github.com/FlorianDaunay/bee-factory/releases/latest/download/bee-factory.apk";
 
-/** Flip to true once CI publishes the APK (milestone M5). */
-export const APK_AVAILABLE = false;
+/** Set to false to hide the banner (e.g. while no published release carries an APK). */
+export const APK_AVAILABLE = true;
 
 const isAndroid = () => /Android/i.test(navigator.userAgent);
-const isNativeApp = () => !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
 
 /** On an Android phone browsing the website, offer the app download. */
 export function AppBanner() {

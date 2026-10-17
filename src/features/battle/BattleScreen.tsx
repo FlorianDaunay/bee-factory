@@ -16,6 +16,7 @@ import { CHAPTERS, STAGES } from "@/core/data/story";
 import { BATTLE_ITEM_LIMIT } from "@/core/kitchen";
 import { randomSeed } from "@/core/rng";
 import type { ItemId } from "@/core/types";
+import { BACK_EVENT } from "@/native";
 import { useGame } from "@/store/game";
 import { BattleResult } from "./BattleResult";
 
@@ -323,6 +324,17 @@ function Battle({ stageId }: { stageId: string }) {
       return () => clearTimeout(t);
     }
   }, [busy, logic, finishBattle, result, stageId, startItems]);
+
+  // Android back button during a fight asks before leaving (once the fight is over it just goes back).
+  useEffect(() => {
+    const onBack = (e: Event) => {
+      if (result) return;
+      e.preventDefault();
+      setConfirmFlee((c) => !c);
+    };
+    window.addEventListener(BACK_EVENT, onBack);
+    return () => window.removeEventListener(BACK_EVENT, onBack);
+  }, [result]);
 
   const flee = () => {
     const used = Object.fromEntries((Object.keys(startItems) as ItemId[]).map((k) => [k, startItems[k] - (logic.items[k] ?? 0)]));

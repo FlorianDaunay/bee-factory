@@ -7,6 +7,7 @@ import { ResourceIcon, Stars, ZoneFlag } from "@/art/icons";
 import { beeById } from "@/core/data/bees";
 import { ELEMENTS, RARITY, ROLES } from "@/core/data/meta";
 import type { Resources, ResourceId } from "@/core/types";
+import { BACK_EVENT } from "@/native";
 import { useGame } from "@/store/game";
 
 export const fmt = (n: number) =>
@@ -15,8 +16,17 @@ export const fmt = (n: number) =>
 export function Modal({ onClose, children, wide }: { onClose: () => void; children: ReactNode; wide?: boolean }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // Android back button closes the modal instead of leaving the screen.
+    const onBack = (e: Event) => {
+      e.preventDefault();
+      onClose();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener(BACK_EVENT, onBack);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(BACK_EVENT, onBack);
+    };
   }, [onClose]);
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4 animate-fade" onClick={onClose}>

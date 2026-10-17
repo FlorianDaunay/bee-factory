@@ -189,5 +189,6 @@
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
-.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
-.safe-top { padding-top: max(env(safe-area-inset-top), 0.25rem); }
+/* env() on the web; Capacitor injects --safe-area-inset-* on older Android WebViews */
+.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px), 0.5rem); }
+.safe-top { padding-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px), 0.25rem); }
