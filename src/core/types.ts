@@ -1,8 +1,11 @@
 export type Rarity = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type Element = "flame" | "leaf" | "storm" | "wave" | "light" | "shadow";
 export type Role = "guardian" | "striker" | "healer" | "support" | "trickster";
-export type ZoneId = "home" | "fr" | "de" | "it" | "jp" | "in" | "eg" | "br" | "us" | "moon" | "mars" | "jupiter" | "saturn" | "sun";
-export type Continent = "home" | "europe" | "asia" | "africa" | "americas" | "space";
+export type ZoneId =
+  | "home" | "fr" | "de" | "it" | "jp" | "in" | "eg" | "br" | "us"
+  | "moon" | "mars" | "jupiter" | "saturn" | "sun"
+  | "comet" | "orion" | "andromeda";
+export type Continent = "home" | "europe" | "asia" | "africa" | "americas" | "space" | "deep";
 
 export interface Stats {
   hp: number;
@@ -27,6 +30,8 @@ export type Effect =
 export interface Burst {
   name: string;
   effects: Effect[];
+  /** Bonus effects from the bee's element (see elementRider), applied after the main ones. */
+  riders?: Effect[];
 }
 
 export type HatKind =
@@ -53,7 +58,7 @@ export interface BeeLook {
   pattern?: "stripes" | "spots" | "plain";
 }
 
-export type PerkId = "honey" | "storage" | "jelly" | "pollen" | "silver";
+export type PerkId = "honey" | "boost" | "jelly" | "pollen" | "silver";
 
 export interface BeeSpecies {
   id: string;

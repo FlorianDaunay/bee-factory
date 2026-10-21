@@ -1,4 +1,4 @@
-import type { Element, EnemyKind, ItemId, Resources, ZoneId } from "../types";
+import type { Element, EnemyKind, ItemId, ResourceId, Resources, ZoneId } from "../types";
 import { enemyId } from "./enemies";
 
 export interface WaveEnemy {
@@ -14,6 +14,8 @@ export interface Stage {
   boss: boolean;
   rewards: Partial<Resources>;
   firstClear: Partial<Resources> & { items?: Partial<Record<ItemId, number>> };
+  /** Set on timed event stages (see core/events). */
+  event?: { id: string; name: string; scene: [string, string]; element: Element };
 }
 
 export interface Chapter {
@@ -46,10 +48,37 @@ const INPUTS: ChapterInput[] = [
   { zone: "in", name: "Lotus Valley", element: "leaf", kinds: ["mantis", "spider", "ant"], boss: "boss-reaper", stages: 5, scene: ["#FFE1C2", "#7FB77E"] },
   { zone: "br", name: "Amazon Canopy", element: "wave", kinds: ["ant", "spider", "beetle"], boss: "boss-bullet", stages: 5, scene: ["#C8F2D4", "#2E8B57"] },
   { zone: "us", name: "Prairie & Cape", element: "shadow", kinds: ["hornet", "mantis", "beetle"], boss: "boss-shade", stages: 5, scene: ["#CFE0FF", "#C9A66B"] },
+  // Space: Vespero's comet trail, from the Moon to the Sun.
+  { zone: "moon", name: "Sea of Tranquility", element: "shadow", kinds: ["moth", "beetle", "spider"], boss: "boss-lunar", stages: 5, scene: ["#2A3570", "#C7CEEA"] },
+  { zone: "mars", name: "Red Canyons", element: "flame", kinds: ["ant", "mantis", "beetle"], boss: "boss-rust", stages: 5, scene: ["#F4C7A1", "#B5452A"] },
+  { zone: "jupiter", name: "Storm Bands", element: "storm", kinds: ["hornet", "wasp", "moth"], boss: "boss-tempest", stages: 5, scene: ["#F4E3C1", "#C9A66B"] },
+  { zone: "saturn", name: "The Great Rings", element: "wave", kinds: ["beetle", "spider", "ant"], boss: "boss-warden", stages: 5, scene: ["#D9D4FF", "#E3C878"] },
+  { zone: "sun", name: "Corona Gate", element: "light", kinds: ["wasp", "hornet", "mantis"], boss: "boss-vespero", stages: 5, scene: ["#FFE9B0", "#FF8A3D"] },
+  // Deep space: where the Wilt came from.
+  { zone: "comet", name: "Comet Trail", element: "storm", kinds: ["moth", "wasp", "spider"], boss: "boss-weaver", stages: 5, scene: ["#1B2A5A", "#7FDBFF"] },
+  { zone: "orion", name: "Orion Nebula", element: "light", kinds: ["mantis", "hornet", "beetle"], boss: "boss-stalker", stages: 5, scene: ["#4A1F6B", "#E05FD0"] },
+  { zone: "andromeda", name: "Andromeda Core", element: "shadow", kinds: ["hornet", "mantis", "spider"], boss: "boss-void", stages: 5, scene: ["#1A1240", "#6C5CE7"] },
 ];
 
-/** Level of the enemies on a stage. Exported for balance tests. */
-export const stageLevel = (chapter: number, index: number) => 1 + chapter * 6 + index * 2;
+/** Level of the enemies on a stage. Earth chapters climb 6 levels each, space chapters 5. Exported for balance tests. */
+export const stageLevel = (chapter: number, index: number) => 1 + Math.min(chapter, 9) * 6 + Math.max(0, chapter - 9) * 5 + index * 2;
+
+/** Rewards are rolled between -25% and +25% of the listed value. */
+export const REWARD_SPREAD = 0.25;
+export const rewardRange = (v: number): [number, number] => [Math.round(v * (1 - REWARD_SPREAD)), Math.round(v * (1 + REWARD_SPREAD))];
+
+/** Chance that a won fight drops a pack ticket: grows with the chapter, higher on bosses, capped so tickets stay special. */
+export const ticketDropChance = (chapter: number, boss = false) => Math.min(0.35, 0.06 + chapter * 0.02 + (boss ? 0.1 : 0));
+/** Chance that a won boss fight drops a royal jelly (first clears always give some). */
+export const JELLY_DROP_CHANCE = 0.3;
+
+/** The three stars of a stage, in order. Shown before and after the fight. */
+export const starTurnLimit = (stage: Pick<Stage, "waves">) => stage.waves.length * 3;
+export function starRules(stage: Pick<Stage, "waves">): string[] {
+  return ["Win the fight", "No bee faints", `Win in ${starTurnLimit(stage)} turns or less`];
+}
+
+export const REWARD_KEYS: ResourceId[] = ["silver", "pollen", "honey"];
 
 function buildStage(ch: ChapterInput, chapter: number, index: number): Stage {
   const last = index === ch.stages - 1;
@@ -83,9 +112,9 @@ function buildStage(ch: ChapterInput, chapter: number, index: number): Stage {
     waves,
     boss: last,
     rewards: {
-      silver: 60 + chapter * 40 + index * 10,
-      pollen: 50 + chapter * 30 + index * 10,
-      honey: 15 + chapter * 10,
+      silver: 80 + chapter * 55 + index * 15,
+      pollen: 65 + chapter * 40 + index * 12,
+      honey: 20 + chapter * 14,
     },
     firstClear: last
       ? { silver: 300 + chapter * 200, jelly: 2, ticket: Math.min(3, 1 + Math.floor(chapter / 3)), items: { royalJelly: 1, honeyJar: 1 } }

@@ -101,6 +101,73 @@ const BOSSES: EnemySpecies[] = [
     name: "Hollow Crown", every: 3,
     effects: [{ t: "damage", target: "all", power: 2, hits: 6 }, { t: "status", target: "all", status: "weaken", turns: 2, chance: 0.6 }],
   }),
+  /* ----- space ----- */
+  boss("boss-lunar", "Lunar Empress", "moth", "shadow", 8, {
+    name: "Eclipse Dust", every: 3,
+    effects: [{ t: "damage", target: "all", power: 1.8, hits: 4 }, { t: "status", target: "all", status: "stun", turns: 1, chance: 0.3 }],
+  }),
+  boss("boss-rust", "Rust Mantis", "mantis", "flame", 8, {
+    name: "Canyon Cleaver", every: 2,
+    effects: [{ t: "damage", target: "all", power: 1.5, hits: 6 }, { t: "status", target: "all", status: "burn", turns: 2, chance: 0.4 }],
+  }),
+  boss("boss-tempest", "Great Tempest", "hornet", "storm", 9, {
+    name: "Red Spot Cyclone", every: 3,
+    effects: [{ t: "damage", target: "all", power: 2.1, hits: 7 }, { t: "status", target: "all", status: "stun", turns: 1, chance: 0.35 }],
+  }),
+  boss("boss-warden", "Ring Warden", "beetle", "wave", 10, {
+    name: "Ring Crusher", every: 3,
+    effects: [{ t: "damage", target: "all", power: 2, hits: 3 }, { t: "status", target: "self", status: "guard", turns: 2, chance: 1 }, { t: "status", target: "all", status: "weaken", turns: 2, chance: 0.5 }],
+  }),
+  boss("boss-vespero", "Vespero, the Hollow King", "hornet", "shadow", 11, {
+    name: "Hollow Eclipse", every: 3,
+    effects: [{ t: "damage", target: "all", power: 2.3, hits: 8 }, { t: "status", target: "all", status: "weaken", turns: 2, chance: 0.6 }, { t: "status", target: "self", status: "fury", turns: 2, chance: 1 }],
+  }),
+  /* ----- deep space ----- */
+  boss("boss-weaver", "Ice Weaver", "spider", "storm", 11, {
+    name: "Frozen Web", every: 3,
+    effects: [{ t: "damage", target: "all", power: 2.2, hits: 6 }, { t: "status", target: "all", status: "poison", turns: 3, chance: 0.6 }],
+  }),
+  boss("boss-stalker", "Nebula Stalker", "mantis", "light", 12, {
+    name: "Starblade Dance", every: 2,
+    effects: [{ t: "damage", target: "all", power: 1.8, hits: 8 }],
+  }),
+  boss("boss-void", "The Void Queen", "hornet", "shadow", 13, {
+    name: "Event Horizon", every: 3,
+    effects: [{ t: "damage", target: "all", power: 2.5, hits: 9 }, { t: "status", target: "all", status: "stun", turns: 1, chance: 0.35 }, { t: "status", target: "all", status: "weaken", turns: 2, chance: 0.5 }],
+  }),
+  /* ----- timed events ----- */
+  boss("boss-spring", "Pollen Mantis", "mantis", "leaf", 7, {
+    name: "Hay Fever", every: 3,
+    effects: [{ t: "damage", target: "all", power: 1.6, hits: 5 }, { t: "status", target: "all", status: "poison", turns: 3, chance: 0.5 }],
+  }),
+  boss("boss-summer", "Scorch Hornet", "hornet", "flame", 7, {
+    name: "Heatwave", every: 3,
+    effects: [{ t: "damage", target: "all", power: 1.8, hits: 5 }, { t: "status", target: "all", status: "burn", turns: 2, chance: 0.5 }],
+  }),
+  boss("boss-autumn", "Harvest Spider", "spider", "shadow", 7, {
+    name: "Falling Leaves", every: 3,
+    effects: [{ t: "damage", target: "all", power: 1.7, hits: 6 }, { t: "status", target: "all", status: "weaken", turns: 2, chance: 0.5 }],
+  }),
+  boss("boss-winter", "Snow Moth", "moth", "wave", 7, {
+    name: "Blizzard", every: 3,
+    effects: [{ t: "damage", target: "all", power: 1.7, hits: 5 }, { t: "status", target: "all", status: "stun", turns: 1, chance: 0.3 }],
+  }),
+  boss("boss-heart", "Heartbreaker Moth", "moth", "light", 7, {
+    name: "Bitter Chocolate", every: 3,
+    effects: [{ t: "damage", target: "all", power: 1.6, hits: 6 }, { t: "status", target: "all", status: "weaken", turns: 2, chance: 0.6 }],
+  }),
+  boss("boss-queenwasp", "Queen Wasp", "wasp", "leaf", 8, {
+    name: "Royal Decree", every: 3,
+    effects: [{ t: "damage", target: "all", power: 1.8, hits: 6 }, { t: "status", target: "self", status: "fury", turns: 2, chance: 1 }],
+  }),
+  boss("boss-pumpkin", "Pumpkin Beetle", "beetle", "shadow", 9, {
+    name: "Trick or Treat", every: 3,
+    effects: [{ t: "damage", target: "all", power: 1.9, hits: 4 }, { t: "status", target: "all", status: "stun", turns: 1, chance: 0.3 }, { t: "status", target: "all", status: "poison", turns: 3, chance: 0.4 }],
+  }),
+  boss("boss-frost", "Frost Stag", "beetle", "wave", 9, {
+    name: "Snowball Storm", every: 3,
+    effects: [{ t: "damage", target: "all", power: 1.9, hits: 5 }, { t: "status", target: "self", status: "guard", turns: 2, chance: 1 }],
+  }),
 ];
 for (const b of BOSSES) ENEMIES[b.id] = b;
 

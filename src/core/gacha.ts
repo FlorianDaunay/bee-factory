@@ -3,10 +3,13 @@ import { ZONES } from "./data/meta";
 import { Rng } from "./rng";
 import type { BeeSpecies, Continent, Rarity, Resources, ZoneId } from "./types";
 
-export type PackFamily = "country" | "continent" | "world" | "planet" | "cosmic";
+export type PackFamily = "country" | "continent" | "world" | "planet" | "cosmic" | "deep" | "galactic";
 
-/** Tier 1 = Earth countries (always open). Tier 2 = Moon, planets and Sun (opens with the story). */
-export type PackTier = 1 | 2;
+/**
+ * Tier 1 = Earth countries (always open). Tier 2 = Moon, planets and Sun. Tier 3 = deep space
+ * (comet, nebula, galaxy). Tiers 2 and 3 open with the story.
+ */
+export type PackTier = 1 | 2 | 3;
 
 export interface Pack {
   id: string;
@@ -27,6 +30,8 @@ const CONTINENT_RATES = [40, 30, 19, 8.5, 2.1, 0.4];
 const WORLD_RATES = [0, 0, 75, 19, 5, 1];
 const PLANET_RATES = [0, 0, 58, 28, 10, 3, 1];
 const COSMIC_RATES = [0, 0, 45, 32, 15, 5.5, 2.5];
+const DEEP_RATES = [0, 0, 0, 62, 26, 8.5, 3.5];
+const GALACTIC_RATES = [0, 0, 0, 52, 30, 12, 6];
 
 export const PITY_LIMIT = 80;
 export const MULTI_COUNT = 10;
@@ -34,11 +39,15 @@ export const TICKET: Partial<Resources> = { ticket: 1 };
 
 export const EARTH_ZONES: ZoneId[] = ["fr", "jp", "de", "eg", "it", "in", "br", "us"];
 export const SPACE_ZONES: ZoneId[] = ["moon", "mars", "jupiter", "saturn", "sun"];
+export const DEEP_ZONES: ZoneId[] = ["comet", "orion", "andromeda"];
 
 /** Tier 2 opens after this stage (the Sakura Mountains boss, end of the third chapter). */
 export const TIER2_UNLOCK_STAGE = "2-5";
+/** Tier 3 opens after this stage (the last Earth boss, before the story leaves for space). */
+export const TIER3_UNLOCK_STAGE = "8-5";
+export const UNLOCK_STAGE: Record<PackTier, string | null> = { 1: null, 2: TIER2_UNLOCK_STAGE, 3: TIER3_UNLOCK_STAGE };
 
-const CONTINENT_NAMES: Record<Exclude<Continent, "home" | "space">, string> = {
+const CONTINENT_NAMES: Record<Exclude<Continent, "home" | "space" | "deep">, string> = {
   europe: "Europe",
   asia: "Asia",
   africa: "Africa",
@@ -82,7 +91,7 @@ export const PACKS: Pack[] = [
     family: "planet",
     name: ZONES[z].name,
     zones: [z],
-    prices: [TICKET, { honey: 400, silver: 1200 }],
+    prices: [TICKET, { honey: 220, silver: 650 }],
     floor: 3,
     rates: PLANET_RATES,
   })),
@@ -92,9 +101,30 @@ export const PACKS: Pack[] = [
     family: "cosmic",
     name: "Cosmic",
     zones: SPACE_ZONES,
-    prices: [TICKET, { honey: 800, silver: 2500, jelly: 1 }],
+    prices: [TICKET, { honey: 450, silver: 1400 }],
     floor: 3,
     rates: COSMIC_RATES,
+  },
+  // Tier 3 costs what tier 2 used to cost.
+  ...DEEP_ZONES.map<Pack>((z) => ({
+    id: `deep-${z}`,
+    tier: 3,
+    family: "deep",
+    name: ZONES[z].name,
+    zones: [z],
+    prices: [TICKET, { honey: 400, silver: 1200 }],
+    floor: 4,
+    rates: DEEP_RATES,
+  })),
+  {
+    id: "galactic",
+    tier: 3,
+    family: "galactic",
+    name: "Galactic",
+    zones: DEEP_ZONES,
+    prices: [TICKET, { honey: 800, silver: 2500, jelly: 1 }],
+    floor: 4,
+    rates: GALACTIC_RATES,
   },
 ];
 
@@ -105,7 +135,7 @@ export function packPool(pack: Pack): BeeSpecies[] {
 }
 
 export type Pity = Record<PackFamily, number>;
-export const emptyPity = (): Pity => ({ country: 0, continent: 0, world: 0, planet: 0, cosmic: 0 });
+export const emptyPity = (): Pity => ({ country: 0, continent: 0, world: 0, planet: 0, cosmic: 0, deep: 0, galactic: 0 });
 
 function rollRarity(rng: Rng, rates: number[], available: Set<Rarity>, floor: Rarity): Rarity {
   const weights = rates.map((w, i) => ((i + 1) >= floor && available.has((i + 1) as Rarity) ? w : 0));

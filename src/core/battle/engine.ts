@@ -1,7 +1,7 @@
 import { beeById } from "../data/bees";
 import { enemyById } from "../data/enemies";
 import { elementMultiplier } from "../data/meta";
-import type { Stage } from "../data/story";
+import { starTurnLimit, type Stage } from "../data/story";
 import { statsAt } from "../progression";
 import { Rng } from "../rng";
 import { computeSynergies } from "../synergy";
@@ -85,7 +85,7 @@ function spawnWave(state: BattleState, events: BattleEvent[]) {
   const specs: WaveSpec[] = state.waves[state.wave];
   state.enemies = specs.map((spec, i) => {
     const sp = enemyById(spec.id);
-    const m = 1 + (spec.level - 1) * 0.12;
+    const m = enemyScale(spec.level);
     const maxHp = Math.round(sp.base.hp * m);
     return {
       uid: `e${state.wave}-${i}`,
@@ -157,6 +157,9 @@ function hurt(state: BattleState, u: Unit, dmg: number, events: BattleEvent[]): 
   return false;
 }
 
+/** Bees faster than 50 speed crit more often: +1% per 5 speed, up to +12%. */
+export const speedCrit = (spd: number) => Math.min(0.12, Math.max(0, (spd - 50) / 500));
+
 function attackStat(u: Unit): number {
   return u.atk * (has(u, "fury") ? 1.3 : 1) * (has(u, "weaken") ? 0.7 : 1);
 }
@@ -166,7 +169,7 @@ function computeHits(state: BattleState, rng: Rng, src: Unit, tgt: Unit, power: 
   const mitigation = 120 / (120 + tgt.def);
   const guard = has(tgt, "guard") ? 0.6 : 1;
   const total = attackStat(src) * power * comboMult * elem * mitigation * guard * rng.range(0.92, 1.08);
-  const critChance = BASE_CRIT + (src.side === "ally" ? state.bonus.crit / 100 : 0);
+  const critChance = BASE_CRIT + (src.side === "ally" ? state.bonus.crit / 100 + speedCrit(src.spd) : 0);
   const critMult = src.side === "ally" && state.passives.includes("eg") ? 2 : 1.5;
   const per = total / hits;
   const out: Hit[] = [];
@@ -358,7 +361,7 @@ export function act(input: BattleState, action: PlayerAction): StepResult {
     if (src.gauge < src.gaugeMax || !src.burst) return { state: input, events: [], error: "gaugeNotFull" };
     src.gauge = 0;
     events.push({ type: "burst", src: src.uid, name: src.burst.name });
-    applyEffects(state, rng, src, src.burst.effects, target, events);
+    applyEffects(state, rng, src, [...src.burst.effects, ...(src.burst.riders ?? [])], target, events);
   } else {
     if (state.combo.target === target.uid) state.combo.count++;
     else state.combo = { target: target.uid, count: 0 };
@@ -431,11 +434,22 @@ function pickWeighted(rng: Rng, targets: Unit[]): Unit {
   return targets[targets.length - 1];
 }
 
-/** Stars earned for a won battle: win, nobody fainted, quick. */
+/** Which of the three star rules a battle met: won, nobody fainted, quick (see starRules). */
+export function starChecks(state: BattleState): [boolean, boolean, boolean] {
+  const won = state.phase === "won";
+  return [won, won && state.faints === 0, won && state.turn <= starTurnLimit(state)];
+}
+
+/** Stars earned for a battle: one per rule met, none for a loss. */
 export function battleStars(state: BattleState): number {
-  if (state.phase !== "won") return 0;
-  let stars = 1;
-  if (state.faints === 0) stars++;
-  if (state.turn <= state.waves.length * 3) stars++;
-  return stars;
+  return state.phase === "won" ? starChecks(state).filter(Boolean).length : 0;
+}
+
+/**
+ * Enemy stat multiplier for a level. Linear early on; past level 40 it climbs faster so space
+ * chapters need trained, high-rarity teams.
+ */
+export const LATE_GAME = { from: 40, perLevel: 0.04 };
+export function enemyScale(level: number): number {
+  return (1 + (level - 1) * 0.12) * (1 + Math.max(0, level - LATE_GAME.from) * LATE_GAME.perLevel);
 }

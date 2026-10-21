@@ -170,6 +170,34 @@ const FLAGS: Record<ZoneId, JSX.Element> = {
       <circle cx="7.5" cy="9.5" r="1" fill="#FFF" />
     </>
   ),
+  comet: (
+    <>
+      <rect width="30" height="30" fill="#0E1A3A" />
+      <path d="M4 26 L19 12" stroke="#7FDBFF" strokeWidth="5" strokeLinecap="round" opacity="0.6" />
+      <path d="M8 24 L19 12" stroke="#E8FBFF" strokeWidth="2.4" strokeLinecap="round" />
+      <circle cx="20" cy="11" r="4.5" fill="#E8FBFF" />
+      <circle cx="25" cy="22" r="0.9" fill="#FFF" />
+    </>
+  ),
+  orion: (
+    <>
+      <rect width="30" height="30" fill="#2A0F4A" />
+      <circle cx="15" cy="15" r="11" fill="#E05FD0" opacity="0.45" />
+      <circle cx="10" cy="17" r="1.6" fill="#FFF" />
+      <circle cx="15" cy="15" r="1.6" fill="#FFF" />
+      <circle cx="20" cy="13" r="1.6" fill="#FFF" />
+      <circle cx="9" cy="7" r="1.2" fill="#FF8A3D" />
+      <circle cx="22" cy="24" r="1.2" fill="#9ED8FF" />
+    </>
+  ),
+  andromeda: (
+    <>
+      <rect width="30" height="30" fill="#0A0624" />
+      <ellipse cx="15" cy="15" rx="12" ry="5" fill="#6C5CE7" opacity="0.7" transform="rotate(-25 15 15)" />
+      <ellipse cx="15" cy="15" rx="7" ry="2.6" fill="#B9A8FF" transform="rotate(-25 15 15)" />
+      <circle cx="15" cy="15" r="2.4" fill="#FFE9A8" />
+    </>
+  ),
 };
 
 export function Stars({ count, max, size = 14, color = "#FFB627" }: { count: number; max?: number; size?: number; color?: string }) {

@@ -4,8 +4,8 @@ import { GameIcon, type IconName } from "@/art/GameIcon";
 import { ResourceIcon, Stars, ZoneFlag } from "@/art/icons";
 import { RARITY, ZONES } from "@/core/data/meta";
 import { STAGES, CHAPTERS } from "@/core/data/story";
-import { MULTI_COUNT, PACKS, PITY_LIMIT, TIER2_UNLOCK_STAGE, displayRates, packPool, type Pack, type PackTier } from "@/core/gacha";
-import { packUnlocked, tier2Unlocked } from "@/core/unlocks";
+import { MULTI_COUNT, PACKS, PITY_LIMIT, UNLOCK_STAGE, displayRates, packPool, type Pack, type PackTier } from "@/core/gacha";
+import { packUnlocked, tierUnlocked } from "@/core/unlocks";
 import type { Resources } from "@/core/types";
 import { useGame, type PullOutcome } from "@/store/game";
 import { BeeTile, Cost, Modal, RarityBadge, fmt } from "@/ui/common";
@@ -31,13 +31,21 @@ const TIERS: { tier: PackTier; title: string; sub: string; groups: { title: stri
       { title: "Cosmic", icon: "light", packs: PACKS.filter((p) => p.family === "cosmic") },
     ],
   },
+  {
+    tier: 3,
+    title: "Tier 3 · Deep space",
+    sub: "Comets, nebulas and galaxies: Epic to Celestial bees",
+    groups: [
+      { title: "Deep space", icon: "shadow", packs: PACKS.filter((p) => p.family === "deep") },
+      { title: "Galactic", icon: "light", packs: PACKS.filter((p) => p.family === "galactic") },
+    ],
+  },
 ];
 
 export function SummonScreen() {
   const cleared = useGame((s) => s.cleared);
   const tickets = useGame((s) => s.resources.ticket);
   const [result, setResult] = useState<{ pack: Pack; outcome: PullOutcome } | null>(null);
-  const unlockStage = STAGES[TIER2_UNLOCK_STAGE];
 
   return (
     <div className="space-y-6">
@@ -50,7 +58,8 @@ export function SummonScreen() {
       </div>
 
       {TIERS.map((t) => {
-        const open = t.tier === 1 || tier2Unlocked(cleared);
+        const open = tierUnlocked(cleared, t.tier);
+        const lockStage = UNLOCK_STAGE[t.tier];
         return (
           <section key={t.tier} className="space-y-4">
             <div className="flex items-end justify-between gap-2 border-b-2 border-border pb-1">
@@ -58,9 +67,9 @@ export function SummonScreen() {
                 <h2 className="text-2xl font-black">{t.title}</h2>
                 <div className="text-sm text-text-secondary">{t.sub}</div>
               </div>
-              {!open && (
+              {!open && lockStage && (
                 <span className="badge bg-surface-hover text-sm">
-                  <Lock size={14} /> Clear stage {TIER2_UNLOCK_STAGE} ({CHAPTERS[unlockStage.chapter].name} boss)
+                  <Lock size={14} /> Clear stage {lockStage} ({CHAPTERS[STAGES[lockStage].chapter].name} boss)
                 </span>
               )}
             </div>
@@ -99,7 +108,9 @@ function PackCard({ pack, unlocked, onOpened }: { pack: Pack; unlocked: boolean;
         ? ["#FF4F79", "#FFB627", "#2F9BFF"]
         : pack.family === "cosmic"
           ? ["#0B1033", "#3A2C7A", "#FF8A3D"]
-          : ["#FFB627", "#3DBE6A", "#2F9BFF"];
+          : pack.family === "galactic"
+            ? ["#0A0624", "#E05FD0", "#7FDBFF"]
+            : ["#FFB627", "#3DBE6A", "#2F9BFF"];
   const go = (count: number, priceIndex: number) => {
     const outcome = open(pack.id, count, priceIndex);
     if (outcome) onOpened(outcome);
@@ -115,7 +126,7 @@ function PackCard({ pack, unlocked, onOpened }: { pack: Pack; unlocked: boolean;
         <button className="btn btn-sm absolute right-2 top-2 !min-h-0 !px-2 !py-0.5" onClick={() => setInfo(true)} aria-label="Rates">
           <Info size={16} />
         </button>
-        {pack.tier === 2 && <span className="badge absolute left-2 top-2 bg-[#1B2A6B] text-white">Tier 2</span>}
+        {pack.tier > 1 && <span className={`badge absolute left-2 top-2 text-white ${pack.tier === 3 ? "bg-[#6C5CE7]" : "bg-[#1B2A6B]"}`}>Tier {pack.tier}</span>}
       </div>
       <div className="space-y-2 p-3">
         <div className="flex items-center justify-between">
@@ -126,7 +137,7 @@ function PackCard({ pack, unlocked, onOpened }: { pack: Pack; unlocked: boolean;
         </div>
         {!unlocked ? (
           <div className="flex items-center justify-center gap-2 py-2 font-bold text-text-muted">
-            <Lock size={18} /> Clear stage {TIER2_UNLOCK_STAGE}
+            <Lock size={18} /> Clear stage {UNLOCK_STAGE[pack.tier]}
           </div>
         ) : (
           // One row per way of paying: the price of one bee, then ×1 / ×10 buttons.

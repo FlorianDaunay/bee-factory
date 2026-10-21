@@ -84,6 +84,9 @@ export const ZONES: Record<ZoneId, Zone> = {
   jupiter: { id: "jupiter", name: "Jupiter", continent: "space", colors: ["#8B5E34", "#E9C46A", "#F4E3C1"], bonus: { kind: "hp", pct: 10 } },
   saturn: { id: "saturn", name: "Saturn", continent: "space", colors: ["#3D3A66", "#E3C878", "#F7EBC6"], bonus: { kind: "def", pct: 10 } },
   sun: { id: "sun", name: "Sun", continent: "space", colors: ["#FF6B3D", "#FFB627", "#FFF3B0"], bonus: { kind: "crit", pct: 10 } },
+  comet: { id: "comet", name: "Comet Trail", continent: "deep", colors: ["#0E1A3A", "#7FDBFF", "#E8FBFF"], bonus: { kind: "gauge", pct: 12 } },
+  orion: { id: "orion", name: "Orion Nebula", continent: "deep", colors: ["#2A0F4A", "#E05FD0", "#FFC2F0"], bonus: { kind: "crit", pct: 12 } },
+  andromeda: { id: "andromeda", name: "Andromeda", continent: "deep", colors: ["#0A0624", "#6C5CE7", "#FFE9A8"], bonus: { kind: "atk", pct: 12 } },
 };
 
 

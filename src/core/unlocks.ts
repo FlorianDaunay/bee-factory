@@ -1,5 +1,5 @@
 import { CHAPTERS, type Stage } from "./data/story";
-import { TIER2_UNLOCK_STAGE, type Pack } from "./gacha";
+import { UNLOCK_STAGE, type Pack, type PackTier } from "./gacha";
 
 export type Cleared = Record<string, number>;
 
@@ -21,12 +21,17 @@ export function highestChapter(cleared: Cleared): number {
   return i;
 }
 
-/** Tier 1 (Earth) packs are always open; tier 2 (space) opens after the Sakura Mountains boss. */
+/** Tier 1 (Earth) packs are always open; tiers 2 and 3 open when their story boss is beaten. */
 export function packUnlocked(cleared: Cleared, pack: Pack): boolean {
-  return pack.tier === 1 || tier2Unlocked(cleared);
+  return tierUnlocked(cleared, pack.tier);
 }
 
-export const tier2Unlocked = (cleared: Cleared) => cleared[TIER2_UNLOCK_STAGE] !== undefined;
+export function tierUnlocked(cleared: Cleared, tier: PackTier): boolean {
+  const stage = UNLOCK_STAGE[tier];
+  return stage === null || cleared[stage] !== undefined;
+}
+
+export const tier2Unlocked = (cleared: Cleared) => tierUnlocked(cleared, 2);
 
 /** The next stage to play: the first unlocked stage not yet cleared. */
 export function nextStage(cleared: Cleared): Stage | undefined {

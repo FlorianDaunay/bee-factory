@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
+import { Clock } from "lucide-react";
+import { DIFFICULTIES, activeEvents, eventStage, nextHoliday, timeLeft, type EventKind } from "@/core/events";
+import type { IconName } from "@/art/GameIcon";
 import { Link, useNavigate } from "react-router-dom";
 import { Lock, Pencil, Swords } from "lucide-react";
 import { BeeSprite } from "@/art/BeeSprite";
@@ -8,12 +11,87 @@ import { ResourceIcon, Stars, ZoneFlag } from "@/art/icons";
 import { beeById } from "@/core/data/bees";
 import { enemyById } from "@/core/data/enemies";
 import { ELEMENTS, ITEMS } from "@/core/data/meta";
-import { CHAPTERS, type Stage } from "@/core/data/story";
+import { CHAPTERS, JELLY_DROP_CHANCE, rewardRange, starRules, ticketDropChance, type Stage } from "@/core/data/story";
 import type { ItemId, ResourceId } from "@/core/types";
 import { chapterUnlocked, nextStage, stageUnlocked } from "@/core/unlocks";
 import { useGame } from "@/store/game";
-import { Modal, fmt } from "@/ui/common";
+import { Modal, fmt, useNow } from "@/ui/common";
 import { SynergyPanel } from "../bees/BeesScreen";
+
+/** Section titles above the first chapter of each part of the story. */
+const ACTS: Record<number, { title: string; icon: IconName }> = {
+  0: { title: "Earth", icon: "globe" },
+  9: { title: "Space", icon: "shadow" },
+  14: { title: "Deep space", icon: "light" },
+};
+
+/** True for dark backgrounds that need light text. */
+function isDark(hex: string): boolean {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return 0.299 * r + 0.587 * g + 0.114 * b < 140;
+}
+
+const KIND_LABEL: Record<EventKind, string> = { daily: "Today", monthly: "This month", season: "Season", holiday: "Holiday" };
+
+/** Timed dungeons: today's, this month's, the season's and any holiday running now. */
+function EventsPanel({ onPick }: { onPick: (s: Stage) => void }) {
+  const now = useNow(30000);
+  const cleared = useGame((s) => s.cleared);
+  const eventClears = useGame((s) => s.eventClears);
+  const events = activeEvents(now);
+  const soon = nextHoliday(now);
+  return (
+    <section className="space-y-2">
+      <h2 className="flex items-center gap-2 text-xl font-black">
+        <GameIcon name="chest" size={24} /> Events
+      </h2>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {events.map((ev) => {
+          const dark = isDark(ev.scene[0]);
+          return (
+            <div
+              key={ev.id}
+              className={`card overflow-hidden p-2.5 ${dark ? "text-white" : "text-[#3A2410]"}`}
+              style={{ background: `linear-gradient(135deg, ${ev.scene[0]}, ${ev.scene[1]})` }}
+            >
+              <div className="flex items-center gap-2">
+                <GameIcon name={ev.element} size={26} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-bold uppercase tracking-wide opacity-75">{KIND_LABEL[ev.kind]}</div>
+                  <div className="truncate font-extrabold leading-tight">{ev.name}</div>
+                </div>
+                <span className="badge shrink-0 bg-black/30 text-white num" title="Time left">
+                  <Clock size={13} /> {timeLeft(ev.end, now)}
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-center gap-1 text-xs font-bold opacity-90">
+                Bonus <ResourceIcon id={ev.focus} size={14} />
+              </div>
+              <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+                {DIFFICULTIES.map((d, i) => {
+                  const st = eventStage(ev, i, cleared);
+                  const best = eventClears[st.id];
+                  return (
+                    <button key={d} className="btn btn-sm flex-col !gap-0 !py-1 text-[#3A2410]" onClick={() => onPick(st)}>
+                      <span className="text-sm font-extrabold">{d}</span>
+                      {best !== undefined ? <Stars count={best} max={3} size={10} /> : <span className="flex items-center gap-0.5 text-[10px] num"><ResourceIcon id="ticket" size={12} />{st.firstClear.ticket ? `+${st.firstClear.ticket}` : "1st"}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {soon && (
+        <div className="flex items-center gap-1.5 text-sm text-text-secondary">
+          <Clock size={14} /> Next holiday: <span className="font-bold">{soon.name}</span> in {timeLeft(soon.start, now)}
+        </div>
+      )}
+    </section>
+  );
+}
 
 export function StoryScreen() {
   const cleared = useGame((s) => s.cleared);
@@ -22,16 +100,19 @@ export function StoryScreen() {
 
   return (
     <div className="space-y-4">
+      <EventsPanel onPick={setStage} />
       {CHAPTERS.map((ch) => {
         const open = chapterUnlocked(cleared, ch.index);
         const stars = ch.stages.reduce((a, s) => a + (cleared[s.id] ?? 0), 0);
+        const dark = isDark(ch.scene[0]);
         return (
+          <Fragment key={ch.index}>
+          {ACTS[ch.index] && <h2 className="flex items-center gap-2 pt-2 text-xl font-black"><GameIcon name={ACTS[ch.index].icon} size={24} /> {ACTS[ch.index].title}</h2>}
           <section
-            key={ch.index}
             className={`card relative overflow-hidden ${open ? "" : "opacity-55 grayscale"}`}
             style={{ background: `linear-gradient(180deg, ${ch.scene[0]} 0%, ${ch.scene[0]} 55%, ${ch.scene[1]} 100%)` }}
           >
-            <div className="flex items-center gap-2 px-3 pt-3 text-[#3A2410]">
+            <div className={`flex items-center gap-2 px-3 pt-3 ${dark ? "text-white" : "text-[#3A2410]"}`}>
               <ZoneFlag zone={ch.zone} size={30} />
               <div className="flex-1">
                 <div className="text-xs font-bold opacity-70">Ch. {ch.index}</div>
@@ -75,6 +156,7 @@ export function StoryScreen() {
               })}
             </div>
           </section>
+          </Fragment>
         );
       })}
       {stage && <StagePreview stage={stage} onClose={() => setStage(null)} />}
@@ -89,15 +171,18 @@ function StagePreview({ stage, onClose }: { stage: Stage; onClose: () => void })
   const cleared = useGame((s) => s.cleared);
   const navigate = useNavigate();
   const ids = team.filter((t): t is string => !!t);
-  const first = cleared[stage.id] === undefined;
+  const eventClears = useGame((s) => s.eventClears);
+  const record = stage.event ? eventClears : cleared;
+  const first = record[stage.id] === undefined;
+  const best = record[stage.id] ?? 0;
   const ch = CHAPTERS[stage.chapter];
 
   return (
     <Modal onClose={onClose} wide>
-      <div className="flex items-center gap-2">
-        <ZoneFlag zone={ch.zone} size={28} />
+      <div className="flex items-center gap-2 pr-12">
+        {stage.event ? <GameIcon name={stage.event.element} size={28} /> : <ZoneFlag zone={ch.zone} size={28} />}
         <h3 className="flex items-center gap-1.5 text-xl font-extrabold">
-          {stage.id} {stage.boss && <GameIcon name="crown" size={24} />}
+          {stage.event?.name ?? stage.id} {stage.boss && <GameIcon name="crown" size={24} />}
         </h3>
         <span className="badge bg-accent/20 num">Lv {stage.waves[0][0].level}</span>
       </div>
@@ -121,17 +206,33 @@ function StagePreview({ stage, onClose }: { stage: Stage; onClose: () => void })
         ))}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <GameIcon name="chest" size={24} title="Rewards" />
-        {(Object.entries(stage.rewards) as [ResourceId, number][]).map(([k, v]) => (
-          <span key={k} className="chip num">
-            <ResourceIcon id={k} size={16} />
-            {fmt(v)}
+      {/* rewards: every win rolls within the range shown */}
+      <div className="mt-3 rounded-tile bg-canvas p-2">
+        <div className="mb-1 flex items-center gap-1.5 text-sm font-extrabold">
+          <GameIcon name="chest" size={20} /> Rewards per win
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(Object.entries(stage.rewards) as [ResourceId, number][]).map(([k, v]) => {
+            const [lo, hi] = rewardRange(v);
+            return (
+              <span key={k} className="chip num">
+                <ResourceIcon id={k} size={16} />
+                {fmt(lo)}-{fmt(hi)}
+              </span>
+            );
+          })}
+          <span className="chip num" title="Chance to get a pack ticket">
+            <ResourceIcon id="ticket" size={16} /> {Math.round(ticketDropChance(stage.chapter, stage.boss) * 100)}%
           </span>
-        ))}
+          {stage.boss && (
+            <span className="chip num" title="Chance to get a royal jelly">
+              <ResourceIcon id="jelly" size={16} /> {Math.round(JELLY_DROP_CHANCE * 100)}%
+            </span>
+          )}
+        </div>
         {first && (
-          <>
-            <span className="badge bg-danger text-white">1st clear</span>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="badge bg-danger text-white">1st clear bonus</span>
             {(["ticket", "silver", "honey", "jelly"] as const)
               .filter((k) => stage.firstClear[k])
               .map((k) => (
@@ -145,8 +246,24 @@ function StagePreview({ stage, onClose }: { stage: Stage; onClose: () => void })
                 <GameIcon name={k as ItemId} size={18} />×{v}
               </span>
             ))}
-          </>
+          </div>
         )}
+      </div>
+
+      {/* how to get the three stars */}
+      <div className="mt-2 rounded-tile bg-canvas p-2">
+        <div className="mb-1 flex items-center gap-1.5 text-sm font-extrabold">
+          <Stars count={3} max={3} size={14} /> Three stars
+          {best > 0 && <span className="ml-auto text-xs font-bold text-text-muted">Best: {best}/3</span>}
+        </div>
+        <ol className="space-y-0.5 text-sm">
+          {starRules(stage).map((rule, i) => (
+            <li key={i} className="flex items-center gap-1.5">
+              <Stars count={i < best ? 1 : 0} max={1} size={14} />
+              {rule}
+            </li>
+          ))}
+        </ol>
       </div>
 
       <div className="mt-4 rounded-tile border border-border p-2">
