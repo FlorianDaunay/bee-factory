@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpCircle, ChevronRight, Coins, Hammer, Lock, Plus, X } from "lucide-react";
+import { ArrowUpCircle, ChevronRight, Coins, Eraser, Hammer, Lock, Plus, Sparkles, Users, X } from "lucide-react";
 import { BeeSprite } from "@/art/BeeSprite";
 import { GameIcon, type IconName } from "@/art/GameIcon";
 import { HiveArt } from "@/art/HiveArt";
@@ -9,64 +9,78 @@ import { beeById } from "@/core/data/bees";
 import { ITEMS, ITEM_IDS } from "@/core/data/meta";
 import {
   HIVE_ORDER,
+  HIVE_RESOURCES,
   HIVE_TYPES,
   MAX_HIVES,
   WORKERS_PER_HIVE,
-  hiveCapacity,
-  hiveRate,
+  beeWork,
+  hiveRates,
   hiveSellValue,
-  hiveStored,
   slotCost,
+  totalRates,
   upgradeCost,
   type Hive,
+  type HiveRates,
 } from "@/core/hive";
 import { RECIPES } from "@/core/kitchen";
 import { nextStage } from "@/core/unlocks";
 import { useGame } from "@/store/game";
-import { PerkIcon } from "@/ui/PerkIcon";
-import { BeeTile, Cost, FloatText, Modal, fmt, useNow } from "@/ui/common";
+import { PerkIcon, PERK_TEXT } from "@/ui/PerkIcon";
+import { BeeTile, Cost, FloatText, Modal, fmt } from "@/ui/common";
+
+/** A per-minute rate, readable at any size (slow ones like jelly are shown per hour). */
+export function fmtRate(perMin: number): string {
+  if (perMin <= 0) return "0/min";
+  if (perMin < 1) return `${(perMin * 60).toFixed(perMin * 60 < 10 ? 1 : 0)}/h`;
+  return `${perMin < 10 ? perMin.toFixed(1) : fmt(Math.round(perMin))}/min`;
+}
+
+function Rates({ rates, size = 16, all = false }: { rates: HiveRates; size?: number; all?: boolean }) {
+  const keys = HIVE_RESOURCES.filter((k) => all || rates[k] > 0);
+  return (
+    <span className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+      {keys.map((k) => (
+        <span key={k} className={`inline-flex items-center gap-0.5 font-bold num ${rates[k] > 0 ? "" : "opacity-40"}`} title={k}>
+          <ResourceIcon id={k} size={size} />
+          {fmtRate(rates[k])}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 export function HiveScreen() {
   const hives = useGame((s) => s.hives);
+  const bees = useGame((s) => s.bees);
   const hiveSlots = useGame((s) => s.hiveSlots);
-  const collectAll = useGame((s) => s.collectAll);
-  const now = useNow(1000);
-  const [pop, setPop] = useState<{ key: number; amount: number } | null>(null);
-  const total = hives.reduce((a, h) => a + hiveStored(h, now), 0);
+  const [workers, setWorkers] = useState<{ hive: string; slot: number } | null>(null);
+  const total = totalRates(hives, bees);
 
   return (
     <div className="space-y-4">
       <PipGreeting />
 
-      <section className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-xl font-extrabold">
-          <GameIcon name="hive" size={26} /> Hives
-          <span className="badge bg-accent/20 num" title="Used / unlocked slots">
-            {hives.length}/{hiveSlots}
-          </span>
-        </h2>
-        <div className="relative">
-          <button
-            className="btn btn-primary"
-            disabled={total <= 0}
-            onClick={() => {
-              const got = collectAll();
-              if (got > 0) setPop({ key: Date.now(), amount: got });
-            }}
-          >
-            <ResourceIcon id="honey" /> Collect all <span className="num">{fmt(total)}</span>
+      <section className="card space-y-2 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-xl font-extrabold">
+            <GameIcon name="hive" size={26} /> Hives
+            <span className="badge bg-accent/20 num" title="Used / unlocked slots">
+              {hives.length}/{hiveSlots}
+            </span>
+          </h2>
+          <button className="btn btn-primary" onClick={() => setWorkers({ hive: hives[0].id, slot: 0 })}>
+            <Users size={18} /> Workers
           </button>
-          {pop && (
-            <FloatText key={pop.key}>
-              +{fmt(pop.amount)}
-            </FloatText>
-          )}
+        </div>
+        <div className="rounded-tile bg-canvas px-3 py-2">
+          <div className="mb-1 text-xs font-bold uppercase tracking-wide text-text-muted">Income, straight to your stock</div>
+          <Rates rates={total} size={20} all />
         </div>
       </section>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {hives.map((h) => (
-          <HiveCard key={h.id} hive={h} now={now} canSell={hives.length > 1} />
+          <HiveCard key={h.id} hive={h} canSell={hives.length > 1} onWorker={(slot) => setWorkers({ hive: h.id, slot })} />
         ))}
         {/* Open slots can take a new hive; the next locked slot can be bought (one at a time). */}
         {Array.from({ length: hiveSlots - hives.length }, (_, i) => (
@@ -81,6 +95,7 @@ export function HiveScreen() {
       </div>
 
       <Kitchen />
+      {workers && <WorkersModal initial={workers} onClose={() => setWorkers(null)} />}
     </div>
   );
 }
@@ -114,37 +129,24 @@ function PipGreeting() {
   );
 }
 
-function HiveCard({ hive, now, canSell }: { hive: Hive; now: number; canSell: boolean }) {
-  const collect = useGame((s) => s.collectHive);
+function HiveCard({ hive, canSell, onWorker }: { hive: Hive; canSell: boolean; onWorker: (slot: number) => void }) {
+  const bees = useGame((s) => s.bees);
   const upgrade = useGame((s) => s.upgradeHive);
   const canAfford = useGame((s) => s.canAfford);
-  const [pop, setPop] = useState<{ key: number; amount: number } | null>(null);
-  const [picking, setPicking] = useState<number | null>(null);
-  const [squish, setSquish] = useState(0);
+  const [pop, setPop] = useState(0);
   const [selling, setSelling] = useState(false);
 
   const t = HIVE_TYPES[hive.type];
-  const stored = hiveStored(hive, now);
-  const cap = hiveCapacity(hive);
-  const fill = cap ? stored / cap : 0;
   const cost = upgradeCost(hive);
+  const rates = hiveRates(hive, bees);
 
   return (
     <div className="card p-3">
       <div className="flex items-center gap-3">
-        <button
-          key={squish}
-          className="relative animate-squish"
-          onClick={() => {
-            const got = collect(hive.id);
-            setSquish((n) => n + 1);
-            if (got > 0) setPop({ key: Date.now(), amount: got });
-          }}
-          aria-label="Collect honey"
-        >
-          <HiveArt type={hive.type} fill={fill} size={96} />
-          {pop && <FloatText key={pop.key}>+{fmt(pop.amount)}</FloatText>}
-        </button>
+        <span className="relative">
+          <HiveArt type={hive.type} fill={0.6} size={88} />
+          {pop > 0 && <FloatText key={pop}>Lv {hive.level}!</FloatText>}
+        </span>
         <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex items-center justify-between gap-2">
             <span className="truncate font-extrabold">{t.name}</span>
@@ -157,15 +159,8 @@ function HiveCard({ hive, now, canSell }: { hive: Hive; now: number; canSell: bo
               )}
             </span>
           </div>
-          <div className="relative h-5 overflow-hidden rounded-pill border border-border bg-canvas">
-            <div className="h-full rounded-pill transition-[width] duration-700" style={{ width: `${fill * 100}%`, background: "linear-gradient(90deg,#F5B301,#FFD86B)" }} />
-            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold num">
-              {fmt(stored)} / {fmt(cap)}
-            </span>
-          </div>
-          <div className="flex items-center gap-1 text-sm text-text-secondary num">
-            <ResourceIcon id="honey" size={16} />
-            {hiveRate(hive).toFixed(1)}/min
+          <div className="rounded-tile bg-canvas px-2 py-1 text-sm">
+            <Rates rates={rates} />
           </div>
         </div>
       </div>
@@ -177,7 +172,7 @@ function HiveCard({ hive, now, canSell }: { hive: Hive; now: number; canSell: bo
             return (
               <button
                 key={i}
-                onClick={() => setPicking(i)}
+                onClick={() => onWorker(i)}
                 className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-border bg-canvas transition-transform active:scale-90"
               >
                 {id ? <BeeSprite look={beeById(id).look} rarity={beeById(id).rarity} size={44} animated={false} aura={false} /> : <span className="text-xl text-text-muted">+</span>}
@@ -186,76 +181,152 @@ function HiveCard({ hive, now, canSell }: { hive: Hive; now: number; canSell: bo
           })}
         </div>
         {cost ? (
-          <button className="btn btn-sm" disabled={!canAfford(cost)} onClick={() => upgrade(hive.id)} title="Upgrade">
+          <button
+            className="btn btn-sm"
+            disabled={!canAfford(cost)}
+            onClick={() => {
+              if (upgrade(hive.id)) setPop(Date.now());
+            }}
+            title="Upgrade: +25% base honey"
+          >
             <ArrowUpCircle size={18} className="text-success" /> <Cost cost={cost} />
           </button>
         ) : (
           <span className="badge bg-success/20">MAX</span>
         )}
       </div>
-
-      {picking !== null && <WorkerPicker hive={hive} slot={picking} onClose={() => setPicking(null)} />}
       {selling && <SellHive hive={hive} onClose={() => setSelling(false)} />}
     </div>
   );
 }
 
-function WorkerPicker({ hive, slot, onClose }: { hive: Hive; slot: number; onClose: () => void }) {
-  const bees = useGame((s) => s.bees);
+/**
+ * Every hive's workers in one place: pick a slot, then a bee. The bee list shows what each bee
+ * adds at its current level, and where it already works.
+ */
+function WorkersModal({ initial, onClose }: { initial: { hive: string; slot: number }; onClose: () => void }) {
   const hives = useGame((s) => s.hives);
+  const bees = useGame((s) => s.bees);
   const setWorker = useGame((s) => s.setWorker);
-  const current = hive.workers[slot];
-  const busy = new Map(hives.flatMap((h) => h.workers.map((w) => [w, h.id] as const)));
-  const list = Object.values(bees).sort((a, b) => beeById(b.id).work - beeById(a.id).work);
+  const autoAssign = useGame((s) => s.autoAssignWorkers);
+  const clearAll = useGame((s) => s.clearWorkers);
+  const [sel, setSel] = useState(initial);
+  const where = new Map(hives.flatMap((h, hi) => h.workers.map((w) => [w, hi] as const)));
+  const list = Object.values(bees).sort((a, b) => beeWork(b.id, b) - beeWork(a.id, a));
+  const total = totalRates(hives, bees);
+
+  const advance = (hiveIndex: number, slot: number) => {
+    // After filling a slot, jump to the next empty one so filling all hives is quick.
+    const hs = useGame.getState().hives;
+    for (let n = 1; n <= hs.length * WORKERS_PER_HIVE; n++) {
+      const flat = hiveIndex * WORKERS_PER_HIVE + slot + n;
+      const h = hs[Math.floor(flat / WORKERS_PER_HIVE) % hs.length];
+      const sl = flat % WORKERS_PER_HIVE;
+      if (!h.workers[sl]) return setSel({ hive: h.id, slot: sl });
+    }
+  };
 
   return (
-    <Modal onClose={onClose}>
-      <h3 className="mb-3 flex items-center gap-2 text-lg font-extrabold"><GameIcon name="work" size={24} /> Worker</h3>
-      {current && (
-        <button
-          className="btn btn-sm mb-3"
-          onClick={() => {
-            setWorker(hive.id, slot, null);
-            onClose();
-          }}
-        >
-          <X size={16} /> Remove
+    <Modal onClose={onClose} wide>
+      <h3 className="mb-1 flex items-center gap-2 text-lg font-extrabold">
+        <GameIcon name="work" size={24} /> Workers
+      </h3>
+      <div className="mb-2 text-sm text-text-secondary">Pick a slot, then a bee. Levels and stars make a bee work better.</div>
+      <div className="mb-2 flex flex-wrap gap-2">
+        <button className="btn btn-sm btn-primary" onClick={autoAssign}>
+          <Sparkles size={16} /> Best team
         </button>
-      )}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        <button className="btn btn-sm" onClick={clearAll}>
+          <Eraser size={16} /> Clear all
+        </button>
+        <span className="ml-auto self-center text-sm">
+          <Rates rates={total} />
+        </span>
+      </div>
+
+      <div className="space-y-1.5">
+        {hives.map((h, hi) => (
+          <div key={h.id} className="flex items-center gap-2 rounded-tile bg-canvas p-1.5">
+            <HiveArt type={h.type} fill={0.6} size={40} />
+            <div className="w-20 shrink-0 leading-tight sm:w-28">
+              <div className="truncate text-sm font-extrabold">{HIVE_TYPES[h.type].name}</div>
+              <div className="text-xs text-text-muted">Lv {h.level}</div>
+            </div>
+            <div className="flex gap-1">
+              {Array.from({ length: WORKERS_PER_HIVE }, (_, i) => {
+                const id = h.workers[i];
+                const active = sel.hive === h.id && sel.slot === i;
+                return (
+                  <span key={i} className="relative">
+                    <button
+                      onClick={() => setSel({ hive: h.id, slot: i })}
+                      className={`flex h-11 w-11 items-center justify-center rounded-full border-2 bg-surface transition-transform active:scale-90 ${
+                        active ? "border-accent ring-4 ring-accent/30" : "border-dashed border-border"
+                      }`}
+                      aria-label={`Hive ${hi + 1} slot ${i + 1}`}
+                    >
+                      {id ? <BeeSprite look={beeById(id).look} rarity={beeById(id).rarity} size={40} animated={false} aura={false} /> : <span className="text-lg text-text-muted">+</span>}
+                    </button>
+                    {id && active && (
+                      <button className="absolute -right-1 -top-1 rounded-full bg-danger p-0.5 text-white" onClick={() => setWorker(h.id, i, null)} aria-label="Remove">
+                        <X size={12} strokeWidth={3} />
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="hidden min-w-0 flex-1 text-xs sm:block">
+              <Rates rates={hiveRates(h, bees)} size={14} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
         {list.map((b) => {
           const sp = beeById(b.id);
+          const at = where.get(b.id);
           return (
             <BeeTile
               key={b.id}
               id={b.id}
               level={b.level}
-              selected={b.id === current}
-              size={60}
+              rank={b.rank}
+              size={52}
+              selected={at !== undefined}
               badge={
                 <span className="badge bg-surface shadow-control num">
-                  <GameIcon name="work" size={13} />
-                  {sp.work}
+                  <GameIcon name="work" size={13} />+{beeWork(b.id, b)}%
                   <PerkIcon perk={sp.perk} size={13} />
-                  {busy.has(b.id) && busy.get(b.id) !== hive.id && <GameIcon name="sleep" size={13} title="Works in another hive" />}
+                  {at !== undefined && <span className="text-accent">H{at + 1}</span>}
                 </span>
               }
               onClick={() => {
-                setWorker(hive.id, slot, b.id);
-                onClose();
+                setWorker(sel.hive, sel.slot, b.id);
+                advance(hives.findIndex((h) => h.id === sel.hive), sel.slot);
               }}
             />
           );
         })}
       </div>
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-3 text-xs text-text-muted">
-        <span className="flex items-center gap-1"><GameIcon name="work" size={14} /> = +% <ResourceIcon id="honey" size={14} /></span>
-        <span className="flex items-center gap-1"><PerkIcon perk="storage" size={14} /> storage</span>
-        <span className="flex items-center gap-1"><PerkIcon perk="pollen" size={14} /> pollen</span>
-        <span className="flex items-center gap-1"><PerkIcon perk="silver" size={14} /> silver</span>
-        <span className="flex items-center gap-1"><PerkIcon perk="jelly" size={14} /> jelly</span>
-      </div>
+      <PerkLegend />
     </Modal>
+  );
+}
+
+function PerkLegend() {
+  return (
+    <div className="mt-3 space-y-1 rounded-tile bg-canvas p-2 text-xs text-text-secondary">
+      <div className="flex items-center gap-1">
+        <GameIcon name="work" size={14} /> Work: + that % of the hive's honey. Each perk below also grows with the bee's level (+4%/level) and stars (+15%/star).
+      </div>
+      {(Object.keys(PERK_TEXT) as (keyof typeof PERK_TEXT)[]).map((p) => (
+        <div key={p} className="flex items-center gap-1">
+          <PerkIcon perk={p} size={14} /> {PERK_TEXT[p]}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -273,7 +344,7 @@ function SellHive({ hive, onClose }: { hive: Hive; onClose: () => void }) {
           <div className="flex items-center gap-2 font-bold">
             You get back <Cost cost={value} />
           </div>
-          <div className="text-text-secondary">Honey inside is collected first. Its worker bees go back to rest.</div>
+          <div className="text-text-secondary">Its worker bees go back to rest.</div>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
@@ -333,7 +404,7 @@ function BuildCard() {
                   <div className="flex-1">
                     <div className="font-extrabold">{t.name}</div>
                     <div className="flex items-center gap-1 text-sm text-text-secondary">
-                      <ResourceIcon id="honey" size={14} /> {t.rate}/min
+                      <ResourceIcon id="honey" size={14} /> {t.rate}/min · max Lv {t.maxLevel}
                     </div>
                   </div>
                   <button
@@ -386,3 +457,4 @@ function Kitchen() {
     </section>
   );
 }
+

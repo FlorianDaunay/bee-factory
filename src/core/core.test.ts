@@ -3,10 +3,13 @@ import { autoBattle } from "./battle/autoplay";
 import { act, createBattle, endPlayerTurn, type TeamMember } from "./battle/engine";
 import { BEES, beeById } from "./data/bees";
 import { CHAPTERS, STAGES } from "./data/story";
-import { PACKS, PITY_LIMIT, SPACE_ZONES, TIER2_UNLOCK_STAGE, emptyPity, packById, pull } from "./gacha";
-import { hiveCapacity, hiveSellValue, hiveStored, slotCost, type Hive } from "./hive";
+import { DEEP_ZONES, PACKS, PITY_LIMIT, SPACE_ZONES, TIER2_UNLOCK_STAGE, TIER3_UNLOCK_STAGE, emptyPity, packById, pull } from "./gacha";
+import { hiveRates, hiveSellValue, income, legacyStored, slotCost, totalRates, type Hive } from "./hive";
 import { packUnlocked } from "./unlocks";
-import { newSave, normalizeSave, ticketDropChance } from "@/store/game";
+import { newOwnedBee } from "./progression";
+import { newSave, normalizeSave } from "@/store/game";
+import { rewardRange, starRules, ticketDropChance } from "./data/story";
+import { activeEvents, eventStage, findEventStage } from "./events";
 import { computeSynergies } from "./synergy";
 
 const team = (ids: string[], level = 1): TeamMember[] => ids.map((id) => ({ id, level, rank: 0 }));
@@ -77,9 +80,23 @@ describe("packs, tiers and tickets", () => {
     const res = pull(packById("cosmic")!, 60, emptyPity(), 3);
     expect(res.bees.every((b) => SPACE_ZONES.includes(b.zone) && b.rarity >= 3)).toBe(true);
   });
-  it("ticket drops grow with the chapter but stay rare", () => {
+  it("ticket drops grow with the chapter, more on bosses, but stay rare", () => {
     expect(ticketDropChance(0)).toBeLessThan(ticketDropChance(4));
-    for (let ch = 0; ch < 20; ch++) expect(ticketDropChance(ch)).toBeLessThanOrEqual(0.25);
+    expect(ticketDropChance(3)).toBeLessThan(ticketDropChance(3, true));
+    for (let ch = 0; ch < 30; ch++) expect(ticketDropChance(ch, true)).toBeLessThanOrEqual(0.35);
+  });
+  it("tier 3 opens after the last Earth boss, gives deep-space bees Epic or better, and costs what tier 2 used to", () => {
+    const deep = PACKS.filter((p) => p.tier === 3);
+    expect(deep.length).toBe(DEEP_ZONES.length + 1);
+    for (const p of deep) {
+      expect(packUnlocked({ [TIER2_UNLOCK_STAGE]: 1 }, p)).toBe(false);
+      expect(packUnlocked({ [TIER3_UNLOCK_STAGE]: 1 }, p)).toBe(true);
+    }
+    expect(STAGES[TIER3_UNLOCK_STAGE].boss).toBe(true);
+    const res = pull(packById("galactic")!, 60, emptyPity(), 9);
+    expect(res.bees.every((b) => DEEP_ZONES.includes(b.zone) && b.rarity >= 4)).toBe(true);
+    expect(packById("deep-orion")!.prices[1]).toEqual({ honey: 400, silver: 1200 });
+    expect(packById("planet-moon")!.prices[1].honey!).toBeLessThan(400);
   });
   it("new accounts start with 50 tickets and 3 hive slots; old saves get the tickets once", () => {
     expect(newSave().resources.ticket).toBe(50);
@@ -121,11 +138,107 @@ describe("synergy", () => {
   });
 });
 
-describe("hive", () => {
-  it("fills over time up to capacity", () => {
-    const hive: Hive = { id: "h", type: "skep", level: 1, since: 0, workers: [] };
-    expect(hiveStored(hive, 10 * 60000)).toBe(10);
-    expect(hiveStored(hive, 1e10)).toBe(hiveCapacity(hive));
+describe("hive income", () => {
+  const owned = (ids: string[], level = 1, rank = 0) => Object.fromEntries(ids.map((id) => [id, { ...newOwnedBee(id), level, rank }]));
+
+  it("pays honey with no storage cap", () => {
+    const hive: Hive = { id: "h", type: "skep", level: 1, workers: [] };
+    const rates = hiveRates(hive, {});
+    expect(rates.honey).toBe(1);
+    expect(income(rates, 10, {}).paid.honey).toBe(10);
+    expect(income(rates, 60 * 24 * 7, {}).paid.honey).toBe(60 * 24 * 7);
+  });
+  it("carries fractions so slow resources still add up", () => {
+    const rates = { honey: 0.4, pollen: 0, silver: 0, jelly: 0 };
+    let carry = {};
+    let total = 0;
+    for (let i = 0; i < 10; i++) {
+      const r = income(rates, 1, carry);
+      total += r.paid.honey ?? 0;
+      carry = r.carry;
+    }
+    expect(total).toBe(4);
+  });
+  it("shows every resource a hive makes, and perks make their resource", () => {
+    const hive: Hive = { id: "h", type: "box", level: 1, workers: ["fr-chef", "fr-mousquetaire", "fr-lumiere"] };
+    const r = hiveRates(hive, owned(hive.workers));
+    expect(r.honey).toBeGreaterThan(2.5);
+    expect(r.pollen).toBeGreaterThan(0);
+    expect(r.silver).toBeGreaterThan(0);
+    expect(r.jelly).toBeGreaterThan(0);
+  });
+  it("levelled and starred workers make more", () => {
+    const hive: Hive = { id: "h", type: "box", level: 1, workers: ["fr-chef", "fr-lavande"] };
+    const low = hiveRates(hive, owned(hive.workers, 1));
+    const high = hiveRates(hive, owned(hive.workers, 20, 2));
+    expect(high.honey).toBeGreaterThan(low.honey);
+    expect(high.pollen).toBeGreaterThan(low.pollen);
+  });
+  it("sums all hives", () => {
+    const hives: Hive[] = [
+      { id: "a", type: "skep", level: 1, workers: [] },
+      { id: "b", type: "box", level: 1, workers: [] },
+    ];
+    expect(totalRates(hives, {}).honey).toBe(3.5);
+  });
+});
+
+describe("saves survive updates", () => {
+  const now = 1_700_000_000_000;
+  // A save written by v0.3.0: one team, hives with stored honey, no income clock.
+  const v1 = {
+    resources: { honey: 100, silver: 200, pollen: 300, jelly: 1, ticket: 5 },
+    bees: { pip: { id: "pip", level: 7, xp: 0, rank: 1, dupes: 0 }, "fr-chef": { id: "fr-chef", level: 3, xp: 0, rank: 0, dupes: 2 }, "gone-bee": { id: "gone-bee", level: 1, xp: 0, rank: 0, dupes: 0 } },
+    team: ["fr-chef", "pip", null, null, null, null],
+    hives: [{ id: "h1", type: "skep", level: 2, since: now - 30 * 60000, workers: ["pip"] }],
+    items: { honeyDrop: 2, honeyJar: 0, mint: 0, royalJelly: 0, candy: 0 },
+    cleared: { "0-1": 3, "0-2": 2 },
+    pity: { country: 12, continent: 0, world: 0, planet: 0, cosmic: 0 },
+    rng: 42,
+    hiveSlots: 4,
+    fresh: [],
+  };
+
+  it("keeps bees, levels, resources, progress and the team", () => {
+    const s = normalizeSave(v1 as never, now);
+    expect(s.bees.pip.level).toBe(7);
+    expect(s.bees["fr-chef"].dupes).toBe(2);
+    expect(s.bees["gone-bee"]).toBeUndefined();
+    expect(s.cleared).toEqual(v1.cleared);
+    expect(s.pity.country).toBe(12);
+    expect(s.hiveSlots).toBe(4);
+    expect(s.resources.silver).toBe(200);
+    expect(s.teams).toEqual([{ name: "Team 1", members: v1.team }]);
+    expect(s.team).toEqual(v1.team);
+  });
+  it("pays the honey that was waiting in the hives", () => {
+    const s = normalizeSave(v1 as never, now);
+    const waiting = legacyStored(v1.hives[0] as Hive, now);
+    expect(waiting).toBeGreaterThan(0);
+    expect(s.resources.honey).toBe(100 + waiting);
+    expect(s.lastTick).toBe(now);
+    expect(s.hives[0].since).toBeUndefined();
+  });
+  it("is stable: a current save loads unchanged", () => {
+    const once = normalizeSave(v1 as never, now);
+    const twice = normalizeSave(JSON.parse(JSON.stringify(once)), now + 5000);
+    expect(twice).toEqual(once);
+  });
+  it("new accounts get one team", () => {
+    const s = newSave();
+    expect(s.teams.length).toBe(1);
+    expect(s.team).toEqual(s.teams[0].members);
+  });
+});
+
+describe("stage rewards and stars", () => {
+  it("shows a range around each reward", () => {
+    const [lo, hi] = rewardRange(100);
+    expect(lo).toBe(75);
+    expect(hi).toBe(125);
+  });
+  it("lists three star rules", () => {
+    expect(starRules(STAGES["1-1"]).length).toBe(3);
   });
 });
 
@@ -205,7 +318,46 @@ describe("balance (auto-battle)", () => {
   it("level 1 commons cannot steamroll late chapters", () => {
     expect(winRate(["pip", "fr-bijou", "jp-mochi"], 1, "5-5")).toBeLessThan(0.1);
   });
+  it("every chapter has a boss and space chapters exist", () => {
+    expect(CHAPTERS.length).toBeGreaterThanOrEqual(17);
+    expect(CHAPTERS.some((c) => c.zone === "sun")).toBe(true);
+    expect(CHAPTERS.some((c) => c.zone === "andromeda")).toBe(true);
+  });
   it("a levelled epic team can clear chapter 3's boss", () => {
     expect(winRate(["fr-mousquetaire", "jp-sakura", "de-ritter", "it-maschera", "in-kamala", "pip"], 22, "3-5")).toBeGreaterThan(0.5);
+  });
+});
+
+describe("timed events", () => {
+  const at = (y: number, m: number, d: number, h = 12) => +new Date(y, m - 1, d, h);
+  it("always has a daily, a monthly and a seasonal event", () => {
+    const kinds = activeEvents(at(2026, 3, 10)).map((e) => e.kind);
+    expect(kinds).toEqual(expect.arrayContaining(["daily", "monthly", "season"]));
+  });
+  it("only the daily event lasts a single day; the others last much longer", () => {
+    for (const t of [at(2026, 10, 25), at(2026, 12, 31), at(2027, 1, 3), at(2026, 5, 20)]) {
+      for (const e of activeEvents(t)) {
+        const hours = (e.end - e.start) / 3600000;
+        if (e.kind === "daily") expect(hours).toBeLessThanOrEqual(25);
+        else expect(hours, e.id).toBeGreaterThanOrEqual(24 * 7);
+        expect(t >= e.start && t < e.end).toBe(true);
+      }
+    }
+  });
+  it("runs Halloween at the end of October and Christmas across the new year", () => {
+    expect(activeEvents(at(2026, 10, 25)).some((e) => e.id === "halloween-2026")).toBe(true);
+    expect(activeEvents(at(2026, 12, 24)).some((e) => e.id === "christmas-2026")).toBe(true);
+    expect(activeEvents(at(2027, 1, 3)).some((e) => e.id === "christmas-2026")).toBe(true);
+    expect(activeEvents(at(2026, 7, 1)).some((e) => e.kind === "holiday")).toBe(false);
+  });
+  it("event stages can be found only while the event runs, and scale with progress", () => {
+    const t = at(2026, 10, 25);
+    const ev = activeEvents(t).find((e) => e.kind === "holiday")!;
+    const st = eventStage(ev, 2, {});
+    expect(findEventStage(st.id, {}, t)?.id).toBe(st.id);
+    expect(findEventStage(st.id, {}, at(2026, 12, 1))).toBeUndefined();
+    const later = eventStage(ev, 2, Object.fromEntries(CHAPTERS.slice(0, 6).flatMap((c) => c.stages.map((s) => [s.id, 3]))));
+    expect(later.waves[0][0].level).toBeGreaterThan(st.waves[0][0].level);
+    expect(st.firstClear.ticket).toBeGreaterThan(0);
   });
 });
