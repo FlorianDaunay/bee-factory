@@ -6,17 +6,17 @@ import { GameIcon, type IconName } from "@/art/GameIcon";
 import { music, useMusic, type Mood } from "@/audio/music";
 import { sfx } from "@/audio/sfx";
 import { autoStep } from "@/core/battle/autoplay";
-import { act, battleStars, createBattle, endPlayerTurn, playerTurnDone } from "@/core/battle/engine";
+import { act, battleStars, createBattle, endPlayerTurn, playerTurnDone, starChecks } from "@/core/battle/engine";
 import type { BattleEvent, BattleState, PlayerAction, Unit } from "@/core/battle/types";
 import { beeById } from "@/core/data/bees";
 import { enemyById } from "@/core/data/enemies";
 import { ELEMENTS, ITEMS, STATUSES } from "@/core/data/meta";
-import { CHAPTERS, STAGES } from "@/core/data/story";
+import { CHAPTERS, type Stage } from "@/core/data/story";
 import { BATTLE_ITEM_LIMIT } from "@/core/kitchen";
 import { randomSeed } from "@/core/rng";
 import type { ItemId } from "@/core/types";
 import { BACK_EVENT } from "@/native";
-import { useGame } from "@/store/game";
+import { findStage, useGame } from "@/store/game";
 import { useSettings } from "@/store/settings";
 import { BattleResult } from "./BattleResult";
 import {
@@ -64,15 +64,19 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export function BattleScreen() {
   const { stageId = "" } = useParams();
   const location = useLocation();
-  const stage = STAGES[stageId];
+  // Built once per visit: an event stage keeps its enemies even if progress changes mid-fight.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stage = useMemo(() => findStage(stageId, useGame.getState().cleared), [stageId, location.key]);
+  const hasTeam = useGame((s) => s.team.some(Boolean));
   if (!stage) return <Navigate to="/story" replace />;
+  // An empty team (e.g. a freshly made preset) cannot fight: pick bees first.
+  if (!hasTeam) return <Navigate to="/bees" replace />;
   // A new navigation (next stage, retry) always starts a fresh fight.
-  return <Battle key={location.key} stageId={stageId} />;
+  return <Battle key={location.key} stageId={stageId} stage={stage} />;
 }
 
-function Battle({ stageId }: { stageId: string }) {
-  const stage = STAGES[stageId];
-  const chapter = CHAPTERS[stage.chapter];
+function Battle({ stageId, stage }: { stageId: string; stage: Stage }) {
+  const scene = stage.event?.scene ?? CHAPTERS[stage.chapter].scene;
   const navigate = useNavigate();
   const team = useGame((s) => s.team);
   const owned = useGame((s) => s.bees);
@@ -125,6 +129,10 @@ function Battle({ stageId }: { stageId: string }) {
   const speed = fast ? 0.5 : 1;
   const speedRef = useRef(speed);
   speedRef.current = speed;
+  /** Fast or auto play keeps the essential effects only (one number per attack, no shake), so phones keep up. */
+  const lite = fast || auto;
+  const liteRef = useRef(lite);
+  liteRef.current = lite;
 
   const fieldRef = useRef<HTMLDivElement>(null);
   const unitEls = useRef<Record<string, HTMLDivElement | null>>({});
@@ -156,6 +164,7 @@ function Battle({ stageId }: { stageId: string }) {
     setTimeout(() => setAnim((a) => (a[uid] === cls ? { ...a, [uid]: "" } : a)), ms);
   };
   const shake = () => {
+    if (liteRef.current) return;
     setShaking(true);
     setTimeout(() => setShaking(false), 360);
   };
@@ -253,17 +262,25 @@ function Battle({ stageId }: { stageId: string }) {
         const anyCrit = ev.hits.some((h) => h.crit);
         if (!ev.burst) flash(ev.src, ally ? "dash-up" : "lunge-down", 300);
         setTimeout(() => flash(ev.tgt, "hit", 260), 120 * sp);
+        const lite = liteRef.current;
         if (ev.burst && src) {
           spawnFx(src.element, ev.tgt, ELEMENTS[src.element].color, 60 * sp);
-          setTint({ key: ++uiKey, color: ELEMENTS[src.element].color });
+          if (!lite) setTint({ key: ++uiKey, color: ELEMENTS[src.element].color });
         }
-        else spawnFx(ally ? (anyCrit ? "crit" : "hit") : "slash", ev.tgt, "#FFFFFF", 120 * sp);
-        ev.hits.forEach((h, i) =>
+        else if (!lite || anyCrit) spawnFx(ally ? (anyCrit ? "crit" : "hit") : "slash", ev.tgt, "#FFFFFF", 120 * sp);
+        if (lite) {
+          // One number for the whole attack instead of one per hit.
           setTimeout(() => {
-            float(ev.tgt, `${h.dmg}${h.crit ? "!" : ""}`, h.crit ? "#FF4F4F" : ally ? "#FFFFFF" : "#FFB0B0", h.crit);
-            sfx(ally ? (h.crit ? "crit" : "hit") : "enemyHit");
-          }, (140 + i * 70) * sp),
-        );
+            float(ev.tgt, `${total}${anyCrit ? "!" : ""}`, anyCrit ? "#FF4F4F" : ally ? "#FFFFFF" : "#FFB0B0", anyCrit);
+            sfx(ally ? (anyCrit ? "crit" : "hit") : "enemyHit");
+          }, 140 * sp);
+        } else
+          ev.hits.forEach((h, i) =>
+            setTimeout(() => {
+              float(ev.tgt, `${h.dmg}${h.crit ? "!" : ""}`, h.crit ? "#FF4F4F" : ally ? "#FFFFFF" : "#FFB0B0", h.crit);
+              sfx(ally ? (h.crit ? "crit" : "hit") : "enemyHit");
+            }, (140 + i * 70) * sp),
+          );
         if (ev.elem > 1) setTimeout(() => float(ev.tgt, "WEAK!", "#FFD23F", true), 60);
         if (ally && !ev.burst) setCombo((c) => ({ count: ev.combo, tick: c.tick + 1 }));
         if (tgt && total > tgt.maxHp * 0.3) shake();
@@ -311,7 +328,7 @@ function Battle({ stageId }: { stageId: string }) {
         break;
       case "status": {
         float(ev.tgt, "", STATUSES[ev.status].color, false, ev.status);
-        if (STATUSES[ev.status].good) spawnFx("buff", ev.tgt, STATUSES[ev.status].color);
+        if (STATUSES[ev.status].good && !liteRef.current) spawnFx("buff", ev.tgt, STATUSES[ev.status].color);
         break;
       }
       case "dot":
@@ -335,7 +352,7 @@ function Battle({ stageId }: { stageId: string }) {
         break;
       case "gauge":
         float(ev.tgt, "", "#FFD23F", false, "gauge");
-        spawnFx("buff", ev.tgt, "#4FC3F7");
+        if (!liteRef.current) spawnFx("buff", ev.tgt, "#4FC3F7");
         break;
       case "stunned":
         float(ev.uid, "", "#F2C500", true, "stun");
@@ -353,8 +370,8 @@ function Battle({ stageId }: { stageId: string }) {
       }
       case "phase":
         setCombo((c) => ({ count: 0, tick: c.tick }));
-        if (ev.phase === "enemy") await runTransition({ key: ++uiKey, kind: "turn", side: "enemy" }, TRANSITION_MS.turn);
-        else if (ev.phase === "player") await runTransition({ key: ++uiKey, kind: "turn", side: "player" }, TRANSITION_MS.turn);
+        // Turn banners are shorter in fast/auto play.
+        if (ev.phase === "enemy" || ev.phase === "player") await runTransition({ key: ++uiKey, kind: "turn", side: ev.phase }, TRANSITION_MS.turn * (liteRef.current ? 0.5 : 1));
         return;
       case "end":
         sfx(ev.result === "won" ? "win" : "lose");
@@ -479,11 +496,11 @@ function Battle({ stageId }: { stageId: string }) {
   return (
     <div
       className="relative flex h-[100dvh] flex-col overflow-hidden text-white"
-      style={{ background: `linear-gradient(180deg, ${chapter.scene[0]} 0%, ${chapter.scene[0]} 45%, ${chapter.scene[1]} 100%)` }}
+      style={{ background: `linear-gradient(180deg, ${scene[0]} 0%, ${scene[0]} 45%, ${scene[1]} 100%)` }}
     >
-      <BossAmbience on={!!bossUnit} />
-      <Hills ground={chapter.scene[1]} dark={!!bossUnit} />
-      <Petals ash={!!bossUnit} />
+      <BossAmbience on={!!bossUnit} lite={lite} />
+      <Hills ground={scene[1]} dark={!!bossUnit} />
+      <Petals ash={!!bossUnit} lite={lite} />
 
       <TopBar
         wave={view.wave}
@@ -499,8 +516,8 @@ function Battle({ stageId }: { stageId: string }) {
       {bossUnit && <BossBar boss={bossUnit} telegraphed={telegraphed.has(bossUnit.uid)} />}
 
       {/* field */}
-      <div ref={fieldRef} className={`relative z-10 flex flex-1 flex-col md:flex-row-reverse ${shaking ? "screen-shake" : ""}`}>
-        <div className="flex flex-1 flex-wrap content-center items-end justify-center gap-x-3 gap-y-1 px-2 md:gap-x-6">
+      <div ref={fieldRef} className={`relative z-10 flex min-h-0 flex-1 flex-col md:flex-row-reverse ${shaking ? "screen-shake" : ""}`}>
+        <div className="flex min-h-0 flex-1 flex-wrap content-center items-end justify-center gap-x-3 gap-y-1 px-2 md:gap-x-6">
           {view.enemies.map((e) => (
             <EnemyView
               key={e.uid}
@@ -520,7 +537,7 @@ function Battle({ stageId }: { stageId: string }) {
           ))}
         </div>
 
-        <div className="flex flex-1 flex-wrap content-center items-end justify-center gap-x-1 px-2 md:gap-x-3 md:gap-y-4">
+        <div className="mx-auto grid min-h-0 flex-1 grid-cols-3 content-center items-end justify-items-center gap-x-2 px-2 md:flex md:flex-wrap md:justify-center md:gap-x-3 md:gap-y-4">
           {view.allies.map((a) => {
             const sp = beeById(a.ref);
             const dead = a.hp <= 0;
@@ -532,7 +549,7 @@ function Battle({ stageId }: { stageId: string }) {
                   }}
                   className={anim[a.uid] ?? ""}
                 >
-                  <BeeSprite look={sp.look} rarity={sp.rarity} size="clamp(64px, 16vw, 140px)" animated={!dead} />
+                  <BeeSprite look={sp.look} rarity={sp.rarity} size="clamp(44px, min(18vw, 10dvh), 140px)" animated={!dead && !lite} />
                 </div>
                 {floaters
                   .filter((f) => f.uid === a.uid)
@@ -554,7 +571,7 @@ function Battle({ stageId }: { stageId: string }) {
       </div>
 
       {/* HUD */}
-      <div className="safe-bottom relative z-20 bg-[#2B2012]/90 px-2 pt-2 backdrop-blur md:px-6 md:pt-3">
+      <div className="safe-bottom relative z-20 shrink-0 bg-[#2B2012]/95 px-2 pt-2 md:px-6 md:pt-3">
         {tip && (
           <TipBubble onClose={() => seeTip(tip.id)}>{tip.text}</TipBubble>
         )}
@@ -600,7 +617,7 @@ function Battle({ stageId }: { stageId: string }) {
         </div>
       )}
 
-      {result && <BattleResult stageId={stageId} outcome={result} stars={battleStars(logic)} />}
+      {result && <BattleResult stageId={stageId} stage={stage} outcome={result} stars={battleStars(logic)} checks={starChecks(logic)} />}
       <BattleStyles />
     </div>
   );

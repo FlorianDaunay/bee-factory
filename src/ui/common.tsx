@@ -45,13 +45,13 @@ export function Modal({ onClose, children, wide }: { onClose: () => void; childr
 }
 
 /** Shows a cost as icons; red when the player cannot afford it. */
-export function Cost({ cost, multiplier = 1, className = "" }: { cost: Partial<Resources>; multiplier?: number; className?: string }) {
+export function Cost({ cost, multiplier = 1, className = "", plain }: { cost: Partial<Resources>; multiplier?: number; className?: string; plain?: boolean }) {
   const resources = useGame((s) => s.resources);
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
       {(Object.keys(cost) as ResourceId[]).map((k) => {
         const v = (cost[k] ?? 0) * multiplier;
-        const ok = resources[k] >= v;
+        const ok = plain || resources[k] >= v;
         return (
           <span key={k} className={`inline-flex items-center gap-0.5 num ${ok ? "" : "text-danger"}`}>
             <ResourceIcon id={k} size={18} />
@@ -100,6 +100,7 @@ export function BeeTile({
   rank,
   selected,
   onClick,
+  onInfo,
   size = 76,
   badge,
 }: {
@@ -109,37 +110,51 @@ export function BeeTile({
   rank?: number;
   selected?: boolean;
   onClick?: () => void;
+  /** Shows a small info button that opens the bee's details. */
+  onInfo?: () => void;
   size?: number;
   badge?: ReactNode;
 }) {
   const sp = beeById(id);
   const color = RARITY[sp.rarity].color;
   return (
-    <button
-      onClick={onClick}
-      className={`relative flex flex-col items-center rounded-tile border-2 bg-surface p-1 pb-1.5 transition-transform active:scale-95 ${selected ? "ring-4 ring-accent" : ""}`}
-      style={{ borderColor: owned ? color : "rgb(var(--color-border))", background: owned ? `linear-gradient(180deg, ${color}22, transparent 70%)` : undefined }}
-    >
-      <span className="absolute left-1 top-1 z-10">
-        <ZoneFlag zone={sp.zone} size={18} />
-      </span>
-      <span className="absolute right-1 top-1 z-10" title={ELEMENTS[sp.element].name}>
-        <GameIcon name={sp.element} size={16} />
-      </span>
-      {badge && <span className="absolute -right-1 -top-2 z-20">{badge}</span>}
-      <BeeSprite look={sp.look} rarity={sp.rarity} size={size} silhouette={!owned} animated={false} />
-      <span className="mt-0.5 max-w-full truncate text-xs font-bold leading-tight">{owned ? sp.name : "???"}</span>
-      <span className="flex items-center gap-1 text-[10px] leading-none">
-        <Stars count={Math.min(sp.rarity, 6)} size={9} color={color} />
-      </span>
-      {owned && level !== undefined && (
-        <span className="mt-0.5 flex items-center gap-1 text-[11px] font-bold text-text-secondary num">
-          Lv{level}
-          {rank ? <span className="text-accent">+{rank}</span> : null}
+    <div className="relative">
+      <button
+        onClick={onClick}
+        className={`relative flex w-full flex-col items-center rounded-tile border-2 bg-surface p-1 pb-1.5 transition-transform active:scale-95 ${selected ? "ring-4 ring-accent" : ""}`}
+        style={{ borderColor: owned ? color : "rgb(var(--color-border))", background: owned ? `linear-gradient(180deg, ${color}22, transparent 70%)` : undefined }}
+      >
+        <span className="absolute left-1 top-1 z-10">
+          <ZoneFlag zone={sp.zone} size={18} />
         </span>
+        <span className="absolute right-1 top-1 z-10" title={ELEMENTS[sp.element].name}>
+          <GameIcon name={sp.element} size={16} />
+        </span>
+        <BeeSprite look={sp.look} rarity={sp.rarity} size={size} silhouette={!owned} animated={false} />
+        <span className="mt-0.5 max-w-full truncate text-xs font-bold leading-tight">{owned ? sp.name : "???"}</span>
+        <span className="flex items-center gap-1 text-[10px] leading-none">
+          <Stars count={Math.min(sp.rarity, 6)} size={9} color={color} />
+        </span>
+        {owned && level !== undefined && (
+          <span className="mt-0.5 flex items-center gap-1 text-[11px] font-bold text-text-secondary num">
+            Lv{level}
+            {rank ? <span className="text-accent">+{rank}</span> : null}
+          </span>
+        )}
+        <span className="sr-only">{ROLES[sp.role].name}</span>
+      </button>
+      {badge && <span className="pointer-events-none absolute -right-1 -top-2 z-20">{badge}</span>}
+      {onInfo && (
+        <button
+          className="absolute bottom-1 right-1 z-20 rounded-full bg-surface shadow-control transition-transform active:scale-90"
+          onClick={onInfo}
+          aria-label={`${sp.name} details`}
+          title="Details"
+        >
+          <GameIcon name="info" size={24} />
+        </button>
       )}
-      <span className="sr-only">{ROLES[sp.role].name}</span>
-    </button>
+    </div>
   );
 }
 

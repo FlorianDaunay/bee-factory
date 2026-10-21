@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { EnemyKind } from "@/core/types";
 
 const INK = "#2A2233";
@@ -12,7 +13,7 @@ interface Props {
 }
 
 /** Wilted insects: greyish tint, glowing violet eyes. Drawn facing left (towards the bees). */
-export function EnemySprite({ kind, tint, boss, size = 96, animated = true }: Props) {
+export const EnemySprite = memo(function EnemySprite({ kind, tint, boss, size = 96, animated = true }: Props) {
   const dark = shadeHex(tint, -0.35);
   return (
     <svg viewBox="0 0 140 140" width={size} height={size} className="overflow-visible" aria-hidden>
@@ -30,7 +31,7 @@ export function EnemySprite({ kind, tint, boss, size = 96, animated = true }: Pr
       </g>
     </svg>
   );
-}
+});
 
 const eyes = (x1: number, y1: number, x2: number, y2: number, r = 5) => (
   <g>

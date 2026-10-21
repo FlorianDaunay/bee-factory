@@ -57,9 +57,9 @@ Honey is gold, so **silver** is the money, as you asked. No real-money currency 
 
 ### Hives (farming)
 - **3 hive slots** at the start; 3 more can be bought one at a time, each more expensive (6 max). Any hive except the last one can be sold for half of what it cost (build + upgrades).
-- Hives fill with honey over time, offline included (up to a storage cap). Tap a hive to collect, with a satisfying drip animation.
+- Hives pay straight into your stock every second, offline included, with no storage cap. The Hive screen shows each resource's rate per minute (slow ones like Royal Jelly per hour), per hive and in total.
 - Hive types unlock with progress: **Straw Skep** → **Wooden Box** → **Clay Pot** → **Crystal Comb** → **Moon Comb** → **Sun Comb**. Upgrades raise output and storage.
-- **Bee utilities:** every bee has a **Work** stat and one utility perk. Assign up to 3 bees to a hive as workers. Example perks: "+20% honey", "+storage", "chance of Royal Jelly", "makes Pollen". Bees on hive duty can still fight, so you never have to choose. This gives weak but cute Common bees a long-term purpose.
+- **Bee utilities:** every bee has a **Work** stat and one utility perk. Assign up to 3 bees to a hive as workers. Perks: more honey, hive boost (+15% to everything the hive makes), makes Pollen, makes Silver, makes Royal Jelly. Work and perks grow with the bee's level (+4% per level) and stars (+15% per star). One "Workers" popup places the bees of every hive, with a "best team" button. Bees on hive duty can still fight, so you never have to choose. This gives weak but cute Common bees a long-term purpose.
 - **Kitchen:** craft consumables from honey and silver.
 
 ---
@@ -144,7 +144,13 @@ Every pack also accepts **1 ticket per bee**.
 | Pack | Pool | Cost | Notes |
 | --- | --- | --- | --- |
 | **Planet pack** | Moon, Mars, Jupiter, Saturn or Sun | Honey + Silver | Rare to Celestial |
-| **Cosmic pack** | every space zone | Honey + Silver + Royal Jelly | best Celestial rate |
+| **Cosmic pack** | every space zone | Honey + Silver | best Celestial rate |
+
+**Tier 3 · Deep space** (opens after the last Earth boss, stage 8-5; costs what tier 2 cost before)
+| Pack | Pool | Cost | Notes |
+| --- | --- | --- | --- |
+| **Deep space pack** | Comet Trail, Orion Nebula or Andromeda | Honey + Silver | Epic to Celestial |
+| **Galactic pack** | every deep-space zone | Honey + Silver + Royal Jelly | best Celestial rate |
 
 **×10 pull:** guarantees Epic or better. Earth rates: Common 50%, Uncommon 28%, Rare 15%, Epic 5.5%, Legendary 1.3%, Mythic 0.2%. Planet rates: Rare 58%, Epic 28%, Legendary 10%, Mythic 3%, Celestial 1%.
 **Pity:** a guaranteed Legendary after 80 pulls without one, counted per pack family.
@@ -194,7 +200,13 @@ Every pack shows its rates and full bee list behind an "i" button.
 | Royal Jelly | revive a fainted bee at 50% HP |
 | Buzz Candy | fill one bee's gauge |
 
-**Stages:** most stages have **2-4 waves**. HP and statuses carry over between waves. The last stage of each chapter (and some mid-chapter ones) has a **boss wave**. The rewards screen shows a chest that pops open with Silver, Pollen, Honey, sometimes Royal Jelly, plus first-clear bonuses and a 1-3 star rating (no bee fainted, cleared within N turns).
+**Stages:** most stages have **2-4 waves**. HP and statuses carry over between waves. The last stage of each chapter (and some mid-chapter ones) has a **boss wave**. The rewards screen shows a chest that pops open with Silver, Pollen, Honey, sometimes Royal Jelly, plus first-clear bonuses and a 1-3 star rating. Stars: win, no bee faints, win within 3 turns per wave; the stage preview lists them and the result screen ticks them. Rewards are rolled within ±25% of the listed value (the preview shows the range), with a ticket chance shown too (higher on bosses), and a 30% Royal Jelly chance on bosses.
+
+**Chapters:** Earth (home + 8 countries), then Space (Moon, Mars, Jupiter, Saturn, Sun with Vespero), then Deep space (Comet Trail, Orion Nebula, Andromeda Core). Enemies scale faster past level 40, so space needs trained, high-rarity teams.
+
+**Timed events:** worked out from the calendar, no server. A daily dungeon (new theme and bonus resource each weekday, ends at midnight), a monthly trial, a seasonal dungeon (3 months) and holidays (Valentine, World Bee Day, Halloween, Winter Fest), all lasting a week or more. Each has Easy / Normal / Hard, scaled to your story progress, with a first-clear bonus per period (tickets and jelly, biggest on holidays). The next holiday is announced on the Story screen.
+
+**Burst elements:** every Burst gets a small bonus from its element: flame may burn, leaf may poison (or gives regen), storm may stun (or charges gauges), wave cleanses the team, light heals the weakest ally, shadow may weaken (or gives fury). Speed above 50 adds crit chance.
 
 **Energy:** the first version has no stamina system, so you can play as much as you like. Rewards for replaying a stage decrease each day to limit farming.
 
@@ -244,7 +256,7 @@ Damage numbers pop and bounce. Crits are bigger and coloured, and element advant
 - **Web (PC and phone):** one responsive web app. Landscape layout on PC, portrait layout on phone. Installable as a PWA.
 - **Android app:** the same code packaged with **Capacitor** into an APK. GitHub Actions builds it and attaches it to each release.
 - **Download on the website:** on an Android phone, the site shows a "Get the app" banner linking to the latest APK. Other phones get "Add to home screen" instructions.
-- **Saves:** local (browser or app storage), with export and import of a save code. Cloud save can come later.
+- **Saves:** local (browser or app storage), with export and import of a save code. Saves are versioned and every older format is upgraded on load, never reset; a backup copy is written next to the main save. Android updates keep data because every APK is signed with the same key. Cloud save can come later.
 
 ---
 

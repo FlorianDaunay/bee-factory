@@ -5,12 +5,13 @@ import { GameIcon } from "@/art/GameIcon";
 import { ResourceIcon, Stars } from "@/art/icons";
 import { beeById } from "@/core/data/bees";
 import { ITEMS } from "@/core/data/meta";
+import { starRules, type Stage } from "@/core/data/story";
 import type { ItemId, ResourceId } from "@/core/types";
 import { nextStage } from "@/core/unlocks";
 import { useGame, type BattleOutcome } from "@/store/game";
 import { fmt } from "@/ui/common";
 
-export function BattleResult({ stageId, outcome, stars }: { stageId: string; outcome: BattleOutcome; stars: number }) {
+export function BattleResult({ stageId, stage, outcome, stars, checks }: { stageId: string; stage: Stage; outcome: BattleOutcome; stars: number; checks: boolean[] }) {
   const navigate = useNavigate();
   const cleared = useGame((s) => s.cleared);
   const next = nextStage(cleared);
@@ -24,9 +25,18 @@ export function BattleResult({ stageId, outcome, stars }: { stageId: string; out
         </div>
         <div className="text-3xl font-black">{outcome.won ? "VICTORY!" : "Defeat…"}</div>
         {outcome.won && (
-          <div className="mt-1 flex justify-center">
-            <Stars count={stars} max={3} size={34} />
-          </div>
+          <>
+            <div className="mt-1 flex justify-center">
+              <Stars count={stars} max={3} size={34} />
+            </div>
+            <ul className="mx-auto mt-1 inline-block space-y-0.5 text-left text-sm">
+              {starRules(stage).map((rule, i) => (
+                <li key={i} className={`flex items-center gap-1.5 ${checks[i] ? "font-bold" : "text-text-muted line-through"}`}>
+                  <Stars count={checks[i] ? 1 : 0} max={1} size={14} /> {rule}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
 
         {/* the chest */}
@@ -47,7 +57,7 @@ export function BattleResult({ stageId, outcome, stars }: { stageId: string; out
         {outcome.firstClear && <div className="mt-2 flex items-center justify-center gap-1 text-sm font-bold text-accent"><GameIcon name="chest" size={18} /> First clear bonus!</div>}
 
         <div className="mt-5 grid gap-2">
-          {outcome.won && next && next.id !== stageId && (
+          {outcome.won && !stage.event && next && next.id !== stageId && (
             <button className="btn btn-primary text-lg" onClick={() => navigate(`/battle/${next.id}`)}>
               <Play size={20} fill="currentColor" /> {next.id}
             </button>

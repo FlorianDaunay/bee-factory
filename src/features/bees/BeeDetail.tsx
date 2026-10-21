@@ -9,7 +9,9 @@ import { ELEMENTS, RARITY, ROLES, STATUSES, ZONES } from "@/core/data/meta";
 import { MAX_RANK, dupesForRank, maxLevel, powerScore, silverForLevel, silverForRank, statsAt, xpForLevel } from "@/core/progression";
 import type { Effect } from "@/core/types";
 import { useGame } from "@/store/game";
-import { PerkIcon } from "@/ui/PerkIcon";
+import { beeWork } from "@/core/hive";
+import { PerkIcon, PERK_TEXT } from "@/ui/PerkIcon";
+import { STAT_INFO, StatsGuide } from "./StatsGuide";
 import { Cost, FloatText, Modal, RarityBadge, fmt } from "@/ui/common";
 
 const STAT_KEYS = ["hp", "atk", "def", "rec", "spd"] as const;
@@ -23,6 +25,7 @@ export function BeeDetail({ id, onClose }: { id: string; onClose: () => void }) 
   const canAfford = useGame((s) => s.canAfford);
   const markSeen = useGame((s) => s.markSeen);
   const [pop, setPop] = useState(0);
+  const [guide, setGuide] = useState(false);
   const sp = beeById(id);
 
   useEffect(() => markSeen(id), [id, markSeen]);
@@ -73,17 +76,35 @@ export function BeeDetail({ id, onClose }: { id: string; onClose: () => void }) 
       </div>
 
       {/* stats */}
-      <div className="mt-2 grid grid-cols-3 gap-1.5">
+      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
         {STAT_KEYS.map((k) => (
-          <div key={k} className="flex items-center gap-1 rounded-tile bg-canvas px-2 py-1.5 font-bold num" title={STAT_NAMES[k]}>
-            <GameIcon name={k} size={18} />
-            {fmt(stats[k])}
-            {!atMax && next[k] > stats[k] && <span className="ml-auto text-xs text-success">+{next[k] - stats[k]}</span>}
+          <div key={k} className="flex items-center gap-1.5 rounded-tile bg-canvas px-2 py-1 num" title={STAT_INFO.find((s) => s.key === k)?.text}>
+            <GameIcon name={k} size={20} />
+            <span className="leading-tight">
+              <span className="block text-[10px] font-bold uppercase tracking-wide text-text-muted">{STAT_NAMES[k]}</span>
+              <span className="font-bold">{fmt(stats[k])}</span>
+            </span>
+            {!atMax && next[k] > stats[k] && <span className="ml-auto text-xs font-bold text-success">+{next[k] - stats[k]}</span>}
           </div>
         ))}
-        <div className="flex items-center gap-1 rounded-tile bg-canvas px-2 py-1.5 font-bold num" title="Hive work">
-          <GameIcon name="work" size={18} /> {sp.work}% <span className="ml-auto"><PerkIcon perk={sp.perk} size={18} /></span>
+        <div className="flex items-center gap-1.5 rounded-tile bg-canvas px-2 py-1 num" title="Extra honey in its hive, and its perk">
+          <GameIcon name="work" size={20} />
+          <span className="leading-tight">
+            <span className="block text-[10px] font-bold uppercase tracking-wide text-text-muted">Hive work</span>
+            <span className="font-bold">+{beeWork(id, owned)}%</span>
+          </span>
+          <span className="ml-auto">
+            <PerkIcon perk={sp.perk} size={20} />
+          </span>
         </div>
+      </div>
+      <div className="mt-1.5 flex items-start gap-1.5 text-xs text-text-secondary">
+        <span className="flex-1">
+          {STAT_INFO.find((s) => s.key === "rec")?.text} {PERK_TEXT[sp.perk]}
+        </span>
+        <button className="btn btn-sm !min-h-0 shrink-0 !px-2 !py-0.5" onClick={() => setGuide(true)}>
+          <GameIcon name="info" size={16} /> Guide
+        </button>
       </div>
 
       {!atMax && (
@@ -112,6 +133,16 @@ export function BeeDetail({ id, onClose }: { id: string; onClose: () => void }) 
             <EffectChip key={i} e={e} />
           ))}
         </div>
+        {!!sp.burst.riders?.length && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="flex items-center gap-1 text-xs font-bold text-text-muted">
+              <GameIcon name={sp.element} size={14} /> {ELEMENTS[sp.element].name} bonus
+            </span>
+            {sp.burst.riders.map((e, i) => (
+              <EffectChip key={i} e={e} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* rank */}
@@ -130,6 +161,7 @@ export function BeeDetail({ id, onClose }: { id: string; onClose: () => void }) 
           {RARITY[sp.rarity].sell}
         </button>
       </div>
+      {guide && <StatsGuide onClose={() => setGuide(false)} />}
     </Modal>
   );
 }

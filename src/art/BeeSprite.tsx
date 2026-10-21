@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { memo, useId } from "react";
 import { RARITY } from "@/core/data/meta";
 import type { BeeLook, Rarity } from "@/core/types";
 import { Hat, Held } from "./accessories";
@@ -25,7 +25,7 @@ interface Props {
  * stripes on the back, wings on top, a hat at the top of the head and an item in hand.
  * Rarity adds an aura behind (glow → sparkles → motes → flames → rainbow → stars).
  */
-export function BeeSprite({ look, rarity, size = 96, flip, silhouette, animated = true, aura = true, className }: Props) {
+export const BeeSprite = memo(function BeeSprite({ look, rarity, size = 96, flip, silhouette, animated = true, aura = true, className }: Props) {
   const uid = useId().replace(/:/g, "");
   const clip = `body-${uid}`;
   const shade = `shade-${uid}`;
@@ -114,7 +114,7 @@ export function BeeSprite({ look, rarity, size = 96, flip, silhouette, animated 
       </g>
     </svg>
   );
-}
+});
 
 function Face({ kind }: { kind: NonNullable<BeeLook["eyes"]> }) {
   const eye = (cx: number, cy: number) => {

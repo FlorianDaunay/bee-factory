@@ -271,8 +271,8 @@ export function Hills({ ground, dark }: { ground: string; dark: boolean }) {
 }
 
 /** Falling petals; during a boss fight they turn into ash from the Wilt. */
-export function Petals({ ash }: { ash: boolean }) {
-  const petals = useMemo(() => Array.from({ length: 14 }, (_, i) => ({ left: (i * 37) % 100, delay: (i * 1.3) % 8, dur: 7 + (i % 4) * 2 })), []);
+export function Petals({ ash, lite }: { ash: boolean; lite?: boolean }) {
+  const petals = useMemo(() => Array.from({ length: lite ? 5 : 14 }, (_, i) => ({ left: (i * 37) % 100, delay: (i * 1.3) % 8, dur: 7 + (i % 4) * 2 })), [lite]);
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       {petals.map((p, i) => (
@@ -285,13 +285,13 @@ export function Petals({ ash }: { ash: boolean }) {
 }
 
 /** The Wilt rolls in when a boss is on the field: dark sky, purple fog, lightning, vignette. */
-export function BossAmbience({ on }: { on: boolean }) {
+export function BossAmbience({ on, lite }: { on: boolean; lite?: boolean }) {
   return (
     <div className="pointer-events-none absolute inset-0 transition-opacity duration-1000" style={{ opacity: on ? 1 : 0 }}>
       <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, #1A0B2E 0%, #3B1640 45%, #5A1A2A88 75%, transparent 100%)" }} />
-      <div className="boss-clouds absolute inset-x-0 top-0 h-1/2 opacity-60" />
-      <div className="absolute inset-0 vignette-pulse" style={{ background: "radial-gradient(circle at 50% 45%, transparent 45%, #12051F 100%)" }} />
-      {on && <div className="lightning absolute inset-0 bg-white" />}
+      <div className={`boss-clouds absolute inset-x-0 top-0 h-1/2 opacity-60 ${lite ? "!animate-none" : ""}`} />
+      <div className={`absolute inset-0 ${lite ? "opacity-80" : "vignette-pulse"}`} style={{ background: "radial-gradient(circle at 50% 45%, transparent 45%, #12051F 100%)" }} />
+      {on && !lite && <div className="lightning absolute inset-0 bg-white" />}
     </div>
   );
 }
@@ -318,7 +318,7 @@ export function BattleStyles() {
       @keyframes boss-title { 0%{transform:scale(2.4); opacity:0} 100%{transform:none; opacity:1} }
       @keyframes hazard { from{background-position:0 0} to{background-position:120px 0} }
       @keyframes speedlines { from{background-position:0 0} to{background-position:-400px 0} }
-      @keyframes lightning { 0%,91%,95%,100%{opacity:0} 92%,94%{opacity:.55} 93%{opacity:.15} }
+      @keyframes lightning { 0%,91%,95%,100%{opacity:0} 92%,94%{opacity:.3} 93%{opacity:.08} }
       @keyframes vignette { 0%,100%{opacity:.75} 50%{opacity:1} }
       @keyframes clouds { from{background-position:0 0} to{background-position:800px 0} }
       @keyframes combo-pop { 0%{transform:scale(2.2) rotate(-8deg); opacity:0} 40%{transform:scale(.9) rotate(2deg); opacity:1} 100%{transform:scale(1) rotate(-4deg)} }
@@ -357,7 +357,7 @@ export function BattleStyles() {
       .hazard{background:repeating-linear-gradient(-45deg,#FF4F4F 0 30px,#1A0A10 30px 60px); animation:hazard .8s linear infinite; opacity:.9}
       .hazard-rev{animation-direction:reverse}
       .speedlines{background:repeating-linear-gradient(90deg, rgba(255,255,255,.35) 0 2px, transparent 2px 40px); animation:speedlines .4s linear infinite; mask-image:linear-gradient(90deg,transparent,#000 30%,#000 70%,transparent)}
-      .lightning{animation:lightning 7s linear infinite; mix-blend-mode:overlay}
+      .lightning{animation:lightning 7s linear infinite; opacity:0}
       .vignette-pulse{animation:vignette 3s ease-in-out infinite}
       .boss-clouds{background:radial-gradient(ellipse 120px 40px at 60px 40px,#2A1838 60%,transparent 62%),radial-gradient(ellipse 160px 50px at 300px 70px,#2A1838 60%,transparent 62%),radial-gradient(ellipse 140px 45px at 560px 30px,#331C44 60%,transparent 62%); background-size:800px 160px; animation:clouds 40s linear infinite}
       .combo-pop{animation:combo-pop .35s cubic-bezier(.2,1.4,.4,1) forwards}

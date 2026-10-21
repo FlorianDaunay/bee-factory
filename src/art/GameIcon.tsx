@@ -189,10 +189,22 @@ const ICONS = {
   ),
 
   /* hive perks */
-  storage: (
+  boost: (
     <g {...s}>
-      <path d="M4 10 L16 4 L28 10 V23 L16 29 L4 23 Z" fill="#C68642" />
-      <path d="M4 10 L16 16 L28 10 M16 16 V29" fill="none" />
+      <path d="M16 3 L28 10 V22 L16 29 L4 22 V10 Z" fill="#FFB627" />
+      <path d="M16 9 L23 17 H19 V24 H13 V17 H9 Z" fill="#FFFFFF" />
+    </g>
+  ),
+  info: (
+    <g {...s}>
+      <circle cx="16" cy="16" r="13" fill="#4FC3F7" />
+      <circle cx="16" cy="9.5" r="2.2" fill="#FFFFFF" stroke="none" />
+      <path d="M13 14 H17 V23 H19" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  ),
+  star: (
+    <g {...s}>
+      <path d="M16 3 L19.8 11.6 L29 12.4 L22 18.6 L24.2 27.8 L16 23 L7.8 27.8 L10 18.6 L3 12.4 L12.2 11.6 Z" fill="#FFD23F" />
     </g>
   ),
 

@@ -245,7 +245,7 @@ export function PartyCard({
       {showBurst && (
         <button
           title={sp.burst.name}
-          className="flex w-full items-center justify-center gap-1 overflow-hidden whitespace-nowrap border-t-2 border-[#FFD23F] px-1 py-1 text-sm font-black italic tracking-wide text-[#3A2410] active:scale-[0.97] disabled:opacity-50 md:py-1.5 md:text-base"
+          className="absolute inset-y-0 right-0 z-10 flex w-[46%] flex-col items-center justify-center gap-0 overflow-hidden whitespace-nowrap border-l-2 border-[#FFD23F] px-1 text-xs font-black italic tracking-wide text-[#3A2410] active:scale-[0.97] disabled:opacity-50 md:static md:w-full md:flex-row md:gap-1 md:border-l-0 md:border-t-2 md:py-1.5 md:text-base"
           style={{ background: "linear-gradient(90deg,#FFD23F,#FF8A3D,#FFD23F)", backgroundSize: "200% 100%", animation: "speedlines 1.2s linear infinite" }}
           disabled={locked}
           onClick={onBurst}
@@ -356,11 +356,18 @@ export function EnemyView({
       title={sp.name}
     >
       <div ref={spriteRef} className={`relative ${anim} ${telegraphed ? "telegraph" : ""}`}>
-        <EnemySprite kind={sp.kind} tint={sp.tint} boss={!!sp.boss} size={sp.boss ? "clamp(120px, 30vw, 240px)" : "clamp(72px, 20vw, 160px)"} />
+        <EnemySprite kind={sp.kind} tint={sp.tint} boss={!!sp.boss} size={sp.boss ? "clamp(72px, min(30vw, 20dvh), 240px)" : "clamp(44px, min(20vw, 12dvh), 160px)"} />
         {isTarget && !dead && <span className="target-ring pointer-events-none absolute inset-0" />}
         <span className="absolute -top-1 left-0 drop-shadow">
           <GameIcon name={unit.element} size={20} title={ELEMENTS[unit.element].name} />
         </span>
+        {/* Phones: the weakness sits on the sprite so the field keeps its height. */}
+        {isTarget && !dead && (
+          <span className="absolute -top-1 right-0 flex items-center rounded-pill bg-black/60 px-1 md:hidden" title={`Weak to ${ELEMENTS[weak].name}`}>
+            <GameIcon name="target" size={12} />
+            <GameIcon name={weak} size={14} />
+          </span>
+        )}
       </div>
       <span className="hidden max-w-[180px] truncate text-xs font-bold text-white md:block" style={{ textShadow: "0 1px 3px #000" }}>
         {sp.name} <span className="opacity-75">Lv {unit.level}</span>
@@ -377,7 +384,7 @@ export function EnemyView({
         ))}
       </div>
       {isTarget && !dead && (
-        <span className="mt-0.5 flex items-center gap-1 rounded-pill bg-black/55 px-2 py-0.5 text-[11px] font-bold text-white md:text-xs">
+        <span className="mt-0.5 hidden items-center gap-1 rounded-pill bg-black/55 px-2 py-0.5 text-xs font-bold text-white md:flex">
           Weak to <GameIcon name={weak} size={14} /> {ELEMENTS[weak].name}
         </span>
       )}
