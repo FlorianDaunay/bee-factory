@@ -192,3 +192,8 @@
 /* env() on the web; Capacitor injects --safe-area-inset-* on older Android WebViews */
 .safe-bottom { padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px), 0.5rem); }
 .safe-top { padding-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px), 0.25rem); }
+/* Popups: the last lines stay above the Android navigation bar, and the popup never runs under the status bar. */
+.modal-sheet {
+  padding-bottom: calc(1rem + max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px)));
+  max-height: calc(100dvh - 1rem - max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px)));
+}

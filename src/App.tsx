@@ -47,6 +47,12 @@ function useHiveIncome() {
 function Shell() {
   const [settings, setSettings] = useState(false);
   const { away, closeAway } = useHiveIncome();
+  const claimGift = useGame((s) => s.claimUpdateGift);
+  const [gift, setGift] = useState<Partial<Resources> | null>(null);
+  useEffect(() => {
+    const g = claimGift(__APP_VERSION__);
+    if (g) setGift(g);
+  }, [claimGift]);
   const inBattle = useLocation().pathname.startsWith("/battle");
   useEffect(() => {
     if (!inBattle) music.setMood("chill");
@@ -69,7 +75,20 @@ function Shell() {
       </main>
       {!inBattle && <BottomNav />}
       {settings && <SettingsModal onClose={() => setSettings(false)} />}
-      {away && (
+      {gift && (
+        <Modal onClose={() => setGift(null)}>
+          <div className="flex flex-col items-center gap-3 text-center">
+            <GameIcon name="chest" size={64} />
+            <div className="text-xl font-extrabold">Bee Factory v{__APP_VERSION__}!</div>
+            <div className="text-sm text-text-secondary">Thanks for playing. A gift for the update:</div>
+            <Cost cost={gift} className="flex-wrap justify-center text-lg font-bold" plain />
+            <button className="btn btn-primary w-full" onClick={() => setGift(null)}>
+              Thanks!
+            </button>
+          </div>
+        </Modal>
+      )}
+      {!gift && away && (
         <Modal onClose={closeAway}>
           <div className="flex flex-col items-center gap-3 text-center">
             <GameIcon name="hive" size={56} />

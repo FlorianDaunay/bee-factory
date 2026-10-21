@@ -10,7 +10,8 @@ import {
   MAX_HIVES,
   START_HIVE_SLOTS,
   WORKERS_PER_HIVE,
-  beeWork,
+  HIVE_RESOURCES,
+  bestWorkers,
   hiveSellValue,
   income,
   legacyStored,
@@ -73,6 +74,19 @@ export interface GameSave {
   carry: Partial<HiveRates>;
   /** Best stars on timed event stages; keys hold the event period, so each new period starts fresh. */
   eventClears: Record<string, number>;
+  /** Last game version whose update gift was received. */
+  giftVersion: string;
+}
+
+/** What every player gets once per game update. */
+export const UPDATE_GIFT: Partial<Resources> = { ticket: 25, honey: 3000, silver: 15000, pollen: 10000, jelly: 5 };
+
+/** Compares "1.2.3"-style versions: negative, zero or positive like a sort function. */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+  return 0;
 }
 
 export interface PullOutcome {
@@ -91,6 +105,8 @@ export interface BattleOutcome {
 
 interface Actions {
   canAfford: (cost: Partial<Resources>) => boolean;
+  /** Gives the update gift once per new version. Returns it, or null if already received. */
+  claimUpdateGift: (version: string) => Partial<Resources> | null;
   /** Pays the hives' income since the last tick. Returns what was paid. */
   tick: (now?: number) => Partial<Resources>;
   upgradeHive: (id: string) => boolean;
@@ -98,8 +114,8 @@ interface Actions {
   sellHive: (id: string) => boolean;
   buyHiveSlot: () => boolean;
   setWorker: (hiveId: string, slot: number, beeId: string | null) => void;
-  /** Fills every hive with the best workers available. */
-  autoAssignWorkers: () => void;
+  /** Fills every hive with the best workers for the chosen resources. */
+  autoAssignWorkers: (focus?: (keyof HiveRates)[]) => void;
   clearWorkers: () => void;
   openPack: (packId: string, count: number, priceIndex: number) => PullOutcome | null;
   levelUp: (id: string) => boolean;
@@ -143,12 +159,20 @@ export function newSave(now = Date.now()): GameSave {
     lastTick: now,
     carry: {},
     eventClears: {},
+    // New players start with their own welcome tickets; gifts start with the next update.
+    giftVersion: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "0.0.0",
   };
 }
 
+/** Average level of the bees in the active team (events scale to it). */
+export function teamLevel(s: Pick<GameSave, "team" | "bees">): number {
+  const levels = s.team.filter((id): id is string => !!id && !!s.bees[id]).map((id) => s.bees[id].level);
+  return levels.length ? levels.reduce((a, b) => a + b, 0) / levels.length : 1;
+}
+
 /** A story stage, or a timed event stage while its event runs. */
-export function findStage(stageId: string, cleared: Record<string, number>): Stage | undefined {
-  return STAGES[stageId] ?? findEventStage(stageId, cleared);
+export function findStage(stageId: string, s: Pick<GameSave, "cleared" | "team" | "bees">): Stage | undefined {
+  return STAGES[stageId] ?? findEventStage(stageId, s.cleared, teamLevel(s));
 }
 
 const knownBee = (id: string) => {
@@ -193,6 +217,8 @@ export function normalizeSave(raw: Partial<GameSave>, now = Date.now()): GameSav
   }
   save.hives = save.hives.map(({ since: _since, ...h }) => h);
   save.carry = { ...raw.carry };
+  // Saves from before update gifts get this update's gift.
+  save.giftVersion = typeof raw.giftVersion === "string" ? raw.giftVersion : "0.0.0";
   // Only clears of events still running are kept.
   const live = new Set(activeEvents(now).map((e) => e.id));
   save.eventClears = Object.fromEntries(Object.entries(raw.eventClears ?? {}).filter(([id]) => live.has(id.split(":")[1])));
@@ -211,7 +237,7 @@ const affordable = (r: Resources, cost: Partial<Resources>) =>
 /** A random amount within the stage's reward range. */
 const roll = (rng: Rng, v: number) => Math.round(v * rng.range(1 - REWARD_SPREAD, 1 + REWARD_SPREAD));
 
-const SAVE_FIELDS = ["resources", "bees", "team", "teams", "activeTeam", "hives", "items", "cleared", "pity", "rng", "hiveSlots", "fresh", "lastTick", "carry", "eventClears"] as const;
+const SAVE_FIELDS = ["resources", "bees", "team", "teams", "activeTeam", "hives", "items", "cleared", "pity", "rng", "hiveSlots", "fresh", "lastTick", "carry", "eventClears", "giftVersion"] as const;
 const pickSave = (s: GameSave): GameSave => Object.fromEntries(SAVE_FIELDS.map((k) => [k, s[k]])) as unknown as GameSave;
 
 /**
@@ -250,6 +276,13 @@ export const useGame = create<GameSave & Actions>()(
         ...newSave(),
 
         canAfford: (cost) => affordable(get().resources, cost),
+
+        claimUpdateGift: (version) => {
+          const s = get();
+          if (compareVersions(version, s.giftVersion) <= 0) return null;
+          set({ resources: add(s.resources, UPDATE_GIFT), giftVersion: version });
+          return UPDATE_GIFT;
+        },
 
         tick: (now = Date.now()) => {
           const s = get();
@@ -320,18 +353,10 @@ export const useGame = create<GameSave & Actions>()(
           }));
         },
 
-        autoAssignWorkers: () => {
+        autoAssignWorkers: (focus = HIVE_RESOURCES) => {
           get().tick();
           const s = get();
-          // Best workers go to the most productive hives first.
-          const ranked = Object.values(s.bees).sort((a, b) => beeWork(b.id, b) - beeWork(a.id, a));
-          const order = [...s.hives].sort((a, b) => HIVE_TYPES[b.type].rate * b.level - HIVE_TYPES[a.type].rate * a.level);
-          const assigned: Record<string, string[]> = {};
-          let next = 0;
-          for (const h of order) {
-            assigned[h.id] = ranked.slice(next, next + WORKERS_PER_HIVE).map((b) => b.id);
-            next += WORKERS_PER_HIVE;
-          }
+          const assigned = bestWorkers(s.hives, s.bees, focus);
           set({ hives: s.hives.map((h) => ({ ...h, workers: assigned[h.id] ?? [] })) });
         },
 
@@ -469,7 +494,7 @@ export const useGame = create<GameSave & Actions>()(
 
         finishBattle: (stageId, won, stars, itemsUsed) => {
           const s = get();
-          const stage = findStage(stageId, s.cleared);
+          const stage = findStage(stageId, s);
           const event = isEventStage(stageId);
           const record = event ? s.eventClears : s.cleared;
           const items = { ...s.items };
@@ -512,7 +537,9 @@ export const useGame = create<GameSave & Actions>()(
 
         importSave: (json) => {
           try {
-            const parsed = JSON.parse(json) as { v?: number; save?: Partial<GameSave> };
+            // A save file holds JSON; a save code is the same JSON in base64.
+            const text = json.trim().startsWith("{") ? json : decodeURIComponent(escape(atob(json.trim())));
+            const parsed = JSON.parse(text) as { v?: number; save?: Partial<GameSave> };
             if (!parsed.save) return false;
             set(normalizeSave(parsed.save));
             return true;
@@ -538,4 +565,9 @@ export const useGame = create<GameSave & Actions>()(
 
 export function exportSave(): string {
   return JSON.stringify({ v: SAVE_VERSION, save: pickSave(useGame.getState()) });
+}
+
+/** The save as one line of text to copy and paste (base64 of exportSave). */
+export function saveCode(): string {
+  return btoa(unescape(encodeURIComponent(exportSave())));
 }

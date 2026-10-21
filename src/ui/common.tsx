@@ -31,7 +31,7 @@ export function Modal({ onClose, children, wide }: { onClose: () => void; childr
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4 animate-fade" onClick={onClose}>
       <div
-        className={`card relative max-h-[92vh] w-full overflow-y-auto rounded-b-none p-4 shadow-overlay sm:rounded-b-card animate-slide-up ${wide ? "sm:max-w-2xl" : "sm:max-w-md"}`}
+        className={`modal-sheet card relative w-full overflow-y-auto overscroll-contain rounded-b-none p-4 shadow-overlay sm:rounded-b-card animate-slide-up ${wide ? "sm:max-w-2xl" : "sm:max-w-md"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <button className="btn btn-sm absolute right-3 top-3 z-10 !min-h-0 !px-2.5" onClick={onClose} aria-label="Close">

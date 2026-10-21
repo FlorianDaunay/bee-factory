@@ -59,7 +59,7 @@ Honey is gold, so **silver** is the money, as you asked. No real-money currency 
 - **3 hive slots** at the start; 3 more can be bought one at a time, each more expensive (6 max). Any hive except the last one can be sold for half of what it cost (build + upgrades).
 - Hives pay straight into your stock every second, offline included, with no storage cap. The Hive screen shows each resource's rate per minute (slow ones like Royal Jelly per hour), per hive and in total.
 - Hive types unlock with progress: **Straw Skep** → **Wooden Box** → **Clay Pot** → **Crystal Comb** → **Moon Comb** → **Sun Comb**. Upgrades raise output and storage.
-- **Bee utilities:** every bee has a **Work** stat and one utility perk. Assign up to 3 bees to a hive as workers. Perks: more honey, hive boost (+15% to everything the hive makes), makes Pollen, makes Silver, makes Royal Jelly. Work and perks grow with the bee's level (+4% per level) and stars (+15% per star). One "Workers" popup places the bees of every hive, with a "best team" button. Bees on hive duty can still fight, so you never have to choose. This gives weak but cute Common bees a long-term purpose.
+- **Bee utilities:** every bee has a **Work** stat and one utility perk. Assign up to 3 bees to a hive as workers. Perks: more honey, hive boost (+15% to everything the hive makes), makes Pollen, makes Silver, makes Royal Jelly. Work and perks grow with the bee's level (+4% per level) and stars (+15% per star). One "Workers" popup places the bees of every hive; "Assign" picks the best workers for the resources you choose (all, or any mix of honey, pollen, silver, jelly), then fills leftover slots with the best all-round bees. Bees on hive duty can still fight, so you never have to choose. This gives weak but cute Common bees a long-term purpose.
 - **Kitchen:** craft consumables from honey and silver.
 
 ---
@@ -204,9 +204,11 @@ Every pack shows its rates and full bee list behind an "i" button.
 
 **Chapters:** Earth (home + 8 countries), then Space (Moon, Mars, Jupiter, Saturn, Sun with Vespero), then Deep space (Comet Trail, Orion Nebula, Andromeda Core). Enemies scale faster past level 40, so space needs trained, high-rarity teams.
 
-**Timed events:** worked out from the calendar, no server. A daily dungeon (new theme and bonus resource each weekday, ends at midnight), a monthly trial, a seasonal dungeon (3 months) and holidays (Valentine, World Bee Day, Halloween, Winter Fest), all lasting a week or more. Each has Easy / Normal / Hard, scaled to your story progress, with a first-clear bonus per period (tickets and jelly, biggest on holidays). The next holiday is announced on the Story screen.
+**Timed events:** worked out from the calendar, no server. A daily dungeon (new theme and bonus resource each weekday, ends at midnight), a monthly trial, a seasonal dungeon (3 months) and holidays (Valentine, World Bee Day, Halloween, Winter Fest), all lasting a week or more. Each has Easy / Normal / Hard. Enemy level follows your team's average level (never above your story progress): Easy at that level, Normal +6, Hard +16, with a first-clear bonus per period (tickets and jelly, biggest on holidays). The next holiday is announced on the Story screen.
 
-**Burst elements:** every Burst gets a small bonus from its element: flame may burn, leaf may poison (or gives regen), storm may stun (or charges gauges), wave cleanses the team, light heals the weakest ally, shadow may weaken (or gives fury). Speed above 50 adds crit chance.
+**Burst elements:** every Burst gets a small bonus from its element: flame may burn, leaf may poison (or gives regen), storm may stun (or charges gauges), wave cleanses the team, light heals the weakest ally, shadow may weaken (or gives fury). Their chance grows with rarity (23% on a Common up to 41% on a Celestial). Elements are spread within each line (at most 3 of one element per country or planet) while keeping its identity: more flame on Mars and the Sun, more shadow on the Moon, storm on Jupiter. Speed above 50 adds crit chance.
+
+**Element unity:** a team where every bee (3 or more) shares one element gets +10% attack, health and gauge, +20% with six.
 
 **Energy:** the first version has no stamina system, so you can play as much as you like. Rewards for replaying a stage decrease each day to limit farming.
 
@@ -256,7 +258,8 @@ Damage numbers pop and bounce. Crits are bigger and coloured, and element advant
 - **Web (PC and phone):** one responsive web app. Landscape layout on PC, portrait layout on phone. Installable as a PWA.
 - **Android app:** the same code packaged with **Capacitor** into an APK. GitHub Actions builds it and attaches it to each release.
 - **Download on the website:** on an Android phone, the site shows a "Get the app" banner linking to the latest APK. Other phones get "Add to home screen" instructions.
-- **Saves:** local (browser or app storage), with export and import of a save code. Saves are versioned and every older format is upgraded on load, never reset; a backup copy is written next to the main save. Android updates keep data because every APK is signed with the same key. Cloud save can come later.
+- **Saves:** local (browser or app storage), with export and import of a save code. Saves are versioned and every older format is upgraded on load, never reset; a backup copy is written next to the main save. Settings can export the save as a file (web) or a save code to copy and paste (works in the Android app too).
+- **Update gift:** every new version gives each existing player 25 tickets, 3,000 honey, 15,000 silver, 10,000 pollen and 5 royal jelly, once. Android updates keep data because every APK is signed with the same key. Cloud save can come later.
 
 ---
 

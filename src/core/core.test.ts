@@ -4,10 +4,10 @@ import { act, createBattle, endPlayerTurn, type TeamMember } from "./battle/engi
 import { BEES, beeById } from "./data/bees";
 import { CHAPTERS, STAGES } from "./data/story";
 import { DEEP_ZONES, PACKS, PITY_LIMIT, SPACE_ZONES, TIER2_UNLOCK_STAGE, TIER3_UNLOCK_STAGE, emptyPity, packById, pull } from "./gacha";
-import { hiveRates, hiveSellValue, income, legacyStored, slotCost, totalRates, type Hive } from "./hive";
+import { bestWorkers, hiveRates, hiveSellValue, income, legacyStored, slotCost, totalRates, type Hive } from "./hive";
 import { packUnlocked } from "./unlocks";
 import { newOwnedBee } from "./progression";
-import { newSave, normalizeSave } from "@/store/game";
+import { UPDATE_GIFT, compareVersions, newSave, normalizeSave, teamLevel, useGame } from "@/store/game";
 import { rewardRange, starRules, ticketDropChance } from "./data/story";
 import { activeEvents, eventStage, findEventStage } from "./events";
 import { computeSynergies } from "./synergy";
@@ -354,10 +354,67 @@ describe("timed events", () => {
     const t = at(2026, 10, 25);
     const ev = activeEvents(t).find((e) => e.kind === "holiday")!;
     const st = eventStage(ev, 2, {});
-    expect(findEventStage(st.id, {}, t)?.id).toBe(st.id);
-    expect(findEventStage(st.id, {}, at(2026, 12, 1))).toBeUndefined();
+    expect(findEventStage(st.id, {}, Infinity, t)?.id).toBe(st.id);
+    expect(findEventStage(st.id, {}, Infinity, at(2026, 12, 1))).toBeUndefined();
     const later = eventStage(ev, 2, Object.fromEntries(CHAPTERS.slice(0, 6).flatMap((c) => c.stages.map((s) => [s.id, 3]))));
     expect(later.waves[0][0].level).toBeGreaterThan(st.waves[0][0].level);
     expect(st.firstClear.ticket).toBeGreaterThan(0);
+  });
+});
+
+describe("player feedback 2", () => {
+  // The store saves to localStorage, which Node does not have.
+  const mem = new Map<string, string>();
+  globalThis.localStorage ??= { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v), removeItem: (k: string) => void mem.delete(k) } as Storage;
+  const owned = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, { ...newOwnedBee(id), level: 10 }]));
+  it("best workers follow the chosen resources", () => {
+    const bees = owned(["fr-chef", "jp-kitsu", "fr-mousquetaire", "jp-hachi", "fr-bijou", "jp-mochi"]);
+    const hives: Hive[] = [{ id: "a", type: "box", level: 1, workers: [] }];
+    const perk = (id: string) => BEES.find((b) => b.id === id)!.perk;
+    // Bees making the chosen resource come first; slots nobody can help with get all-round bees.
+    const pollen = bestWorkers(hives, bees, ["pollen"]).a;
+    expect(pollen.map(perk).slice(0, 2)).toEqual(["pollen", "pollen"]);
+    const silver = bestWorkers(hives, bees, ["silver"]).a;
+    expect(silver.map(perk).slice(0, 2)).toEqual(["silver", "silver"]);
+    expect(pollen.length).toBe(3);
+    expect(bestWorkers(hives, bees, ["honey", "pollen", "silver", "jelly"]).a.length).toBe(3);
+  });
+  it("no line is dominated by one element, and healers are not mostly light", () => {
+    for (const z of new Set(BEES.map((b) => b.zone))) {
+      const line = BEES.filter((b) => b.zone === z);
+      const counts: Record<string, number> = {};
+      line.forEach((b) => (counts[b.element] = (counts[b.element] ?? 0) + 1));
+      expect(Math.max(...Object.values(counts)), z).toBeLessThanOrEqual(3);
+    }
+    const healers = BEES.filter((b) => b.role === "healer");
+    expect(healers.filter((b) => b.element === "light").length / healers.length).toBeLessThan(0.35);
+  });
+  it("a team of one element gets the unity bonus", () => {
+    const flame = BEES.filter((b) => b.element === "flame").slice(0, 3);
+    expect(computeSynergies(flame).unity).toEqual({ element: "flame", pct: 10 });
+    expect(computeSynergies([...flame.slice(0, 2), BEES.find((b) => b.element === "wave")!]).unity).toBeNull();
+  });
+  it("events follow the team level", () => {
+    const ev = activeEvents(+new Date(2026, 9, 25))[0];
+    const deep = Object.fromEntries(CHAPTERS.slice(0, 9).flatMap((c) => c.stages.map((s) => [s.id, 3])));
+    expect(eventStage(ev, 0, deep, 12).waves[0][0].level).toBe(12);
+    expect(teamLevel({ team: ["pip", "fr-chef", null, null, null, null], bees: { pip: { ...newOwnedBee("pip"), level: 10 }, "fr-chef": { ...newOwnedBee("fr-chef"), level: 20 } } })).toBe(15);
+  });
+  it("gives the update gift once per version, and old saves get it", () => {
+    expect(compareVersions("0.5.0", "0.4.9")).toBeGreaterThan(0);
+    expect(compareVersions("0.10.0", "0.9.0")).toBeGreaterThan(0);
+    useGame.setState(normalizeSave({ resources: { honey: 0, silver: 0, pollen: 0, jelly: 0, ticket: 0 } }));
+    const before = useGame.getState().resources.ticket;
+    expect(useGame.getState().claimUpdateGift("0.5.0")).toEqual(UPDATE_GIFT);
+    expect(useGame.getState().resources.ticket).toBe(before + UPDATE_GIFT.ticket!);
+    expect(useGame.getState().claimUpdateGift("0.5.0")).toBeNull();
+  });
+  it("a save code loads back the same save", async () => {
+    const { saveCode } = await import("@/store/game");
+    useGame.setState({ resources: { honey: 123, silver: 4, pollen: 5, jelly: 6, ticket: 7 } });
+    const code = saveCode();
+    useGame.setState({ resources: { honey: 0, silver: 0, pollen: 0, jelly: 0, ticket: 0 } });
+    expect(useGame.getState().importSave(code)).toBe(true);
+    expect(useGame.getState().resources.honey).toBe(123);
   });
 });

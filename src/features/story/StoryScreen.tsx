@@ -14,7 +14,7 @@ import { ELEMENTS, ITEMS } from "@/core/data/meta";
 import { CHAPTERS, JELLY_DROP_CHANCE, rewardRange, starRules, ticketDropChance, type Stage } from "@/core/data/story";
 import type { ItemId, ResourceId } from "@/core/types";
 import { chapterUnlocked, nextStage, stageUnlocked } from "@/core/unlocks";
-import { useGame } from "@/store/game";
+import { teamLevel, useGame } from "@/store/game";
 import { Modal, fmt, useNow } from "@/ui/common";
 import { SynergyPanel } from "../bees/BeesScreen";
 
@@ -39,6 +39,7 @@ function EventsPanel({ onPick }: { onPick: (s: Stage) => void }) {
   const now = useNow(30000);
   const cleared = useGame((s) => s.cleared);
   const eventClears = useGame((s) => s.eventClears);
+  const level = useGame(teamLevel);
   const events = activeEvents(now);
   const soon = nextHoliday(now);
   return (
@@ -70,11 +71,16 @@ function EventsPanel({ onPick }: { onPick: (s: Stage) => void }) {
               </div>
               <div className="mt-1.5 grid grid-cols-3 gap-1.5">
                 {DIFFICULTIES.map((d, i) => {
-                  const st = eventStage(ev, i, cleared);
+                  const st = eventStage(ev, i, cleared, level);
                   const best = eventClears[st.id];
                   return (
-                    <button key={d} className="btn btn-sm flex-col !gap-0 !py-1 text-[#3A2410]" onClick={() => onPick(st)}>
+                    <button
+                      key={d}
+                      className="flex flex-col items-center rounded-tile border-2 border-white/80 bg-white px-1 py-1 text-[#3A2410] shadow-control transition-transform active:scale-95"
+                      onClick={() => onPick(st)}
+                    >
                       <span className="text-sm font-extrabold">{d}</span>
+                      <span className="text-[10px] font-bold text-[#7A5A2E] num">Lv {st.waves[0][0].level}</span>
                       {best !== undefined ? <Stars count={best} max={3} size={10} /> : <span className="flex items-center gap-0.5 text-[10px] num"><ResourceIcon id="ticket" size={12} />{st.firstClear.ticket ? `+${st.firstClear.ticket}` : "1st"}</span>}
                     </button>
                   );

@@ -82,21 +82,23 @@ export function elementRider(element: Element, burst: Burst, r: Rarity): Effect[
   const dmg = burst.effects.find((e): e is Extract<Effect, { t: "damage" }> => e.t === "damage");
   const has = (status: StatusId) => burst.effects.some((e) => e.t === "status" && e.status === status);
   const foes = dmg?.target ?? "one";
+  // Status bonuses get likelier with rarity: 23% on a Common, 41% on a Celestial.
+  const chance = Math.round((0.2 + r * 0.03) * 100) / 100;
   switch (element) {
     case "flame":
-      return dmg && !has("burn") ? [{ t: "status", target: foes, status: "burn", turns: 2, chance: 0.3 }] : [];
+      return dmg && !has("burn") ? [{ t: "status", target: foes, status: "burn", turns: 2, chance }] : [];
     case "leaf":
-      if (dmg) return has("poison") ? [] : [{ t: "status", target: foes, status: "poison", turns: 3, chance: 0.3 }];
+      if (dmg) return has("poison") ? [] : [{ t: "status", target: foes, status: "poison", turns: 3, chance }];
       return has("regen") ? [] : [{ t: "status", target: "team", status: "regen", turns: 2, chance: 1 }];
     case "storm":
-      if (dmg) return has("stun") ? [] : [{ t: "status", target: foes, status: "stun", turns: 1, chance: 0.15 }];
+      if (dmg) return has("stun") ? [] : [{ t: "status", target: foes, status: "stun", turns: 1, chance: Math.round(chance * 50) / 100 }];
       return [{ t: "gauge", target: "team", amount: 3 + r }];
     case "wave":
       return burst.effects.some((e) => e.t === "cleanse") ? [] : [{ t: "cleanse", target: "team" }];
     case "light":
       return [{ t: "heal", target: "lowest", power: 0.8 * scale(r) }];
     case "shadow":
-      return dmg && !has("weaken") ? [{ t: "status", target: foes, status: "weaken", turns: 2, chance: 0.3 }] : [{ t: "status", target: "self", status: "fury", turns: 2, chance: 1 }];
+      return dmg && !has("weaken") ? [{ t: "status", target: foes, status: "weaken", turns: 2, chance }] : [{ t: "status", target: "self", status: "fury", turns: 2, chance: 1 }];
   }
 }
 
@@ -154,7 +156,7 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "fr-lumiere", name: "Lumière", zone: "fr", rarity: 5, element: "light", role: "healer", perk: "jelly",
     burst: heal("Ville Lumière", 5, "regen"),
     look: { body: "#FFE9A8", stripe: "#C9A227", wing: "#FFF6D6", hat: "crown", hatColor: "#FFD54A", held: "torch", heldColor: "#FFB627" } }),
-  bee({ id: "fr-etoile", name: "Étoile", zone: "fr", rarity: 6, element: "light", role: "support", perk: "jelly",
+  bee({ id: "fr-etoile", name: "Étoile", zone: "fr", rarity: 6, element: "shadow", role: "support", perk: "jelly",
     burst: rally("Starlit Ballet", 6, true),
     look: { body: "#FFF1C1", stripe: "#3A4BA8", wing: "#E8ECFF", hat: "crown", hatColor: "#BFD3FF", hatColor2: "#FFFFFF", held: "staff", heldColor: "#BFD3FF", eyes: "happy" } }),
   bee({ id: "fr-croissant", name: "Croissant", zone: "fr", rarity: 2, element: "flame", role: "guardian", perk: "boost",
@@ -180,10 +182,10 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "de-donner", name: "Donner", zone: "de", rarity: 5, element: "storm", role: "striker", perk: "silver",
     burst: strike("Thunder Anvil", 5, "all", ["stun", 0.35]),
     look: { body: "#FFCE00", stripe: "#1A1A1A", wing: "#FFF4B0", hat: "knight", hatColor: "#FFCE00", hatColor2: "#DD0000", held: "sword", heldColor: "#FFF4B0", eyes: "fierce" } }),
-  bee({ id: "de-oktober", name: "Oktober", zone: "de", rarity: 3, element: "wave", role: "healer", perk: "pollen",
+  bee({ id: "de-oktober", name: "Oktober", zone: "de", rarity: 3, element: "light", role: "healer", perk: "pollen",
     burst: heal("Harvest Toast", 3, "cleanse"),
     look: { body: Y, stripe: "#3B6E3B", hat: "tyrolean", hatColor: "#3B6E3B", hatColor2: "#FFFFFF", held: "tea", heldColor: "#FFCE00", eyes: "happy" } }),
-  bee({ id: "de-kaiserin", name: "Kaiserin", zone: "de", rarity: 6, element: "storm", role: "guardian", perk: "jelly",
+  bee({ id: "de-kaiserin", name: "Kaiserin", zone: "de", rarity: 6, element: "wave", role: "guardian", perk: "jelly",
     burst: guard("Imperial Bulwark", 6, true),
     look: { body: "#FFE070", stripe: "#1A1A1A", wing: "#FFF8D6", hat: "crown", hatColor: "#FFCE00", hatColor2: "#DD0000", held: "shield", heldColor: "#1A1A1A", eyes: "fierce" } }),
 
@@ -200,27 +202,27 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "it-maschera", name: "Maschera", zone: "it", rarity: 4, element: "shadow", role: "trickster", perk: "jelly",
     burst: trick("Masquerade", 4, "weaken"),
     look: { body: "#F2C14E", stripe: "#3D1E3D", wing: "#F3D9FF", hat: "venetian", hatColor: "#FFFFFF", hatColor2: "#C9A227", held: "fan", heldColor: "#7B2D7B" } }),
-  bee({ id: "it-centurio", name: "Centurio", zone: "it", rarity: 5, element: "flame", role: "guardian", perk: "silver",
+  bee({ id: "it-centurio", name: "Centurio", zone: "it", rarity: 5, element: "storm", role: "guardian", perk: "silver",
     burst: guard("Testudo", 5, true),
     look: { body: Y, stripe: "#7A1E1E", hat: "centurion", hatColor: "#C9A227", hatColor2: "#CE2B37", held: "shield", heldColor: "#CE2B37", eyes: "fierce" } }),
-  bee({ id: "it-gelato", name: "Gelato", zone: "it", rarity: 2, element: "wave", role: "healer", perk: "honey",
+  bee({ id: "it-gelato", name: "Gelato", zone: "it", rarity: 2, element: "light", role: "healer", perk: "honey",
     burst: heal("Three Scoops", 2),
     look: { body: "#FFE9D6", stripe: "#F28DB2", hat: "chef", hatColor: "#FFFFFF", held: "dipper", heldColor: "#9ED8FF", eyes: "happy" } }),
-  bee({ id: "it-serenissima", name: "Serenissima", zone: "it", rarity: 6, element: "light", role: "trickster", perk: "jelly",
+  bee({ id: "it-serenissima", name: "Serenissima", zone: "it", rarity: 6, element: "wave", role: "trickster", perk: "jelly",
     burst: trick("Grand Carnival", 6, "weaken"),
     look: { body: "#FFF1C1", stripe: "#7A1E1E", wing: "#FFE8F0", hat: "venetian", hatColor: "#C9A227", hatColor2: "#CE2B37", held: "fan", heldColor: "#C9A227", eyes: "sleepy" } }),
 
   /* ----- Japan ----- */
-  bee({ id: "jp-mochi", name: "Mochi", zone: "jp", rarity: 1, element: "leaf", role: "healer", perk: "honey",
+  bee({ id: "jp-mochi", name: "Mochi", zone: "jp", rarity: 1, element: "wave", role: "healer", perk: "honey",
     burst: heal("Tea Ceremony", 1),
     look: { body: "#FFE6A0", stripe: "#7A5230", hat: "sakura", hatColor: "#FFB7C5", held: "tea", heldColor: "#7FB069", eyes: "sleepy" } }),
-  bee({ id: "jp-hachi", name: "Hachi", zone: "jp", rarity: 2, element: "flame", role: "striker", perk: "silver",
+  bee({ id: "jp-hachi", name: "Hachi", zone: "jp", rarity: 2, element: "wave", role: "striker", perk: "silver",
     burst: strike("Dojo Dash", 2),
     look: { body: Y, stripe: B, hat: "headband", hatColor: "#FFFFFF", hatColor2: "#D7263D", held: "sword", heldColor: "#C8A27A", eyes: "fierce" } }),
-  bee({ id: "jp-kitsu", name: "Kitsu", zone: "jp", rarity: 3, element: "shadow", role: "trickster", perk: "pollen",
+  bee({ id: "jp-kitsu", name: "Kitsu", zone: "jp", rarity: 3, element: "flame", role: "trickster", perk: "pollen",
     burst: trick("Foxfire Trick", 3, "burn"),
     look: { body: "#FFD8A8", stripe: "#D9480F", hat: "kitsune", hatColor: "#FFFFFF", hatColor2: "#D7263D", held: "fan", heldColor: "#D7263D" } }),
-  bee({ id: "jp-sakura", name: "Sakura", zone: "jp", rarity: 4, element: "light", role: "healer", perk: "boost",
+  bee({ id: "jp-sakura", name: "Sakura", zone: "jp", rarity: 4, element: "leaf", role: "healer", perk: "boost",
     burst: heal("Petal Rain", 4, "regen"),
     look: { body: "#FFE1EA", stripe: "#E07A9A", wing: "#FFE8F0", hat: "sakura", hatColor: "#FF8FAB", held: "umbrella", heldColor: "#FF8FAB", eyes: "happy" } }),
   bee({ id: "jp-raiden", name: "Raiden", zone: "jp", rarity: 5, element: "storm", role: "striker", perk: "silver",
@@ -229,7 +231,7 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "jp-tsukuyomi", name: "Tsukuyomi", zone: "jp", rarity: 6, element: "shadow", role: "trickster", perk: "jelly",
     burst: trick("Moonlit Veil", 6, "weaken"),
     look: { body: "#E8E4FF", stripe: "#2E2A5A", wing: "#D9D4FF", hat: "crown", hatColor: "#C7CEEA", hatColor2: "#2E2A5A", held: "lantern", heldColor: "#C7CEEA", eyes: "sleepy" } }),
-  bee({ id: "jp-taiko", name: "Taiko", zone: "jp", rarity: 2, element: "storm", role: "guardian", perk: "boost",
+  bee({ id: "jp-taiko", name: "Taiko", zone: "jp", rarity: 2, element: "light", role: "guardian", perk: "boost",
     burst: guard("Drum Wall", 2),
     look: { body: Y, stripe: "#7A1E1E", hat: "headband", hatColor: "#FFFFFF", hatColor2: "#1A1A2E", held: "bat", heldColor: "#C8A27A", eyes: "fierce" } }),
   bee({ id: "jp-kage", name: "Kage", zone: "jp", rarity: 4, element: "shadow", role: "striker", perk: "silver",
@@ -237,7 +239,7 @@ export const BEES: BeeSpecies[] = [
     look: { body: "#3A3A4A", stripe: "#D7263D", wing: "#D9D4FF", hat: "headband", hatColor: "#1A1A2E", hatColor2: "#D7263D", held: "sword", heldColor: "#DDE3EA", eyes: "fierce" } }),
 
   /* ----- India ----- */
-  bee({ id: "in-chai", name: "Chai", zone: "in", rarity: 1, element: "wave", role: "healer", perk: "honey",
+  bee({ id: "in-chai", name: "Chai", zone: "in", rarity: 1, element: "flame", role: "healer", perk: "honey",
     burst: heal("Masala Chai", 1),
     look: { body: Y, stripe: "#8B4513", hat: "garland", hatColor: "#FF9933", held: "tea", heldColor: "#C68642", eyes: "happy" } }),
   bee({ id: "in-genda", name: "Genda", zone: "in", rarity: 2, element: "leaf", role: "support", perk: "pollen",
@@ -246,16 +248,16 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "in-mayura", name: "Mayura", zone: "in", rarity: 3, element: "wave", role: "trickster", perk: "boost",
     burst: trick("Peacock Dance", 3, "weaken"),
     look: { body: "#FFD23F", stripe: "#0F5C8C", wing: "#B8F2E6", hat: "feathers", hatColor: "#1B9AAA", hatColor2: "#2E5EAA", held: "feather", heldColor: "#1B9AAA" } }),
-  bee({ id: "in-kamala", name: "Kamala", zone: "in", rarity: 4, element: "light", role: "healer", perk: "jelly",
+  bee({ id: "in-kamala", name: "Kamala", zone: "in", rarity: 4, element: "wave", role: "healer", perk: "jelly",
     burst: heal("Lotus Bloom", 4, "cleanse"),
     look: { body: "#FFF0D1", stripe: "#E07A9A", wing: "#FFF0F5", hat: "lotus", hatColor: "#FF8FAB", held: "flower", heldColor: "#FF8FAB", eyes: "sleepy" } }),
-  bee({ id: "in-bagha", name: "Bagha", zone: "in", rarity: 5, element: "flame", role: "striker", perk: "silver",
+  bee({ id: "in-bagha", name: "Bagha", zone: "in", rarity: 5, element: "leaf", role: "striker", perk: "silver",
     burst: strike("Tiger Pounce", 5, "one", ["burn", 0.7]),
     look: { body: "#FF9933", stripe: "#1A1A1A", hat: "none", hatColor: "#000000", held: "staff", heldColor: "#C9A227", eyes: "fierce" } }),
   bee({ id: "in-rangoli", name: "Rangoli", zone: "in", rarity: 2, element: "light", role: "support", perk: "honey",
     burst: rally("Colour Burst", 2),
     look: { body: "#FFD23F", stripe: "#D6336C", hat: "garland", hatColor: "#D6336C", hatColor2: "#FFA500", held: "flower", heldColor: "#7B2CBF", eyes: "happy" } }),
-  bee({ id: "in-garuda", name: "Garuda", zone: "in", rarity: 6, element: "wave", role: "striker", perk: "jelly",
+  bee({ id: "in-garuda", name: "Garuda", zone: "in", rarity: 6, element: "storm", role: "striker", perk: "jelly",
     burst: strike("Wings of Garuda", 6, "all", ["weaken", 0.4]),
     look: { body: "#FFB627", stripe: "#0F5C8C", wing: "#FFE0B2", hat: "feathers", hatColor: "#FF6F00", hatColor2: "#0F5C8C", held: "staff", heldColor: "#C9A227", eyes: "fierce" } }),
 
@@ -275,10 +277,10 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "eg-ramessa", name: "Ramessa", zone: "eg", rarity: 5, element: "light", role: "support", perk: "jelly",
     burst: rally("Sun Barge", 5, true),
     look: { body: "#FFD700", stripe: "#1F4E9C", wing: "#FFF8DC", hat: "nemes", hatColor: "#FFD700", hatColor2: "#1F4E9C", held: "ankh", heldColor: "#FFD700" } }),
-  bee({ id: "eg-sphinxa", name: "Sphinxa", zone: "eg", rarity: 6, element: "light", role: "guardian", perk: "jelly",
+  bee({ id: "eg-sphinxa", name: "Sphinxa", zone: "eg", rarity: 6, element: "flame", role: "guardian", perk: "jelly",
     burst: guard("Riddle of Ages", 6, true),
     look: { body: "#E9C46A", stripe: "#8B5E34", wing: "#FFF4D6", hat: "nemes", hatColor: "#F4D35E", hatColor2: "#1F4E9C", held: "shield", heldColor: "#F4D35E", eyes: "sleepy" } }),
-  bee({ id: "eg-oasis", name: "Oasis", zone: "eg", rarity: 2, element: "wave", role: "healer", perk: "honey",
+  bee({ id: "eg-oasis", name: "Oasis", zone: "eg", rarity: 2, element: "leaf", role: "healer", perk: "honey",
     burst: heal("Palm Shade", 2),
     look: { body: Y, stripe: "#1F8A8A", hat: "straw", hatColor: "#EAD9A6", hatColor2: "#1F8A8A", held: "tea", heldColor: "#2F80ED", eyes: "happy" } }),
   bee({ id: "eg-horus", name: "Horus", zone: "eg", rarity: 4, element: "light", role: "striker", perk: "silver",
@@ -295,10 +297,10 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "br-tucano", name: "Tucano", zone: "br", rarity: 3, element: "leaf", role: "trickster", perk: "pollen",
     burst: trick("Canopy Ambush", 3, "poison"),
     look: { body: "#FFC300", stripe: "#1A1A1A", hat: "none", hatColor: "#000000", held: "feather", heldColor: "#FF7B00" } }),
-  bee({ id: "br-carnaval", name: "Carnaval", zone: "br", rarity: 4, element: "light", role: "support", perk: "boost",
+  bee({ id: "br-carnaval", name: "Carnaval", zone: "br", rarity: 4, element: "shadow", role: "support", perk: "boost",
     burst: rally("Grand Parade", 4, true),
     look: { body: "#FFE066", stripe: "#7B2CBF", wing: "#FFD6FF", hat: "feathers", hatColor: "#7B2CBF", hatColor2: "#00C2A8", held: "maraca", heldColor: "#00C2A8", eyes: "happy" } }),
-  bee({ id: "br-amazonia", name: "Amazônia", zone: "br", rarity: 5, element: "leaf", role: "healer", perk: "jelly",
+  bee({ id: "br-amazonia", name: "Amazônia", zone: "br", rarity: 5, element: "wave", role: "healer", perk: "jelly",
     burst: heal("Rainforest Breath", 5, "regen"),
     look: { body: "#C5E86C", stripe: "#1B5E20", wing: "#E8FFD6", hat: "laurel", hatColor: "#2E7D32", held: "staff", heldColor: "#6D4C41", eyes: "sleepy" } }),
   bee({ id: "br-capoeira", name: "Capoeira", zone: "br", rarity: 3, element: "storm", role: "trickster", perk: "silver",
@@ -309,7 +311,7 @@ export const BEES: BeeSpecies[] = [
     look: { body: "#F5F7FA", stripe: "#009C3B", wing: "#FFFBE6", hat: "laurel", hatColor: "#FFDF00", held: "shield", heldColor: "#002776", eyes: "sleepy" } }),
 
   /* ----- USA ----- */
-  bee({ id: "us-slugger", name: "Slugger", zone: "us", rarity: 1, element: "storm", role: "striker", perk: "honey",
+  bee({ id: "us-slugger", name: "Slugger", zone: "us", rarity: 1, element: "leaf", role: "striker", perk: "honey",
     burst: strike("Home Run", 1),
     look: { body: Y, stripe: B, hat: "cap", hatColor: "#B22234", hatColor2: "#FFFFFF", held: "bat", heldColor: "#C68642", eyes: "fierce" } }),
   bee({ id: "us-dusty", name: "Dusty", zone: "us", rarity: 2, element: "flame", role: "guardian", perk: "boost",
@@ -321,16 +323,16 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "us-rocket", name: "Rocket", zone: "us", rarity: 4, element: "flame", role: "striker", perk: "silver",
     burst: strike("Afterburner", 4, "all", ["burn", 0.5]),
     look: { body: Y, stripe: "#3C3B6E", hat: "goggles", hatColor: "#B22234", held: "torch", heldColor: "#FF6A3D", eyes: "fierce" } }),
-  bee({ id: "us-ranger", name: "Ranger", zone: "us", rarity: 5, element: "wave", role: "guardian", perk: "jelly",
+  bee({ id: "us-ranger", name: "Ranger", zone: "us", rarity: 5, element: "leaf", role: "guardian", perk: "jelly",
     burst: guard("Canyon Stand", 5, true),
     look: { body: "#F4C430", stripe: "#3C3B6E", hat: "cowboy", hatColor: "#3C3B6E", hatColor2: "#B22234", held: "lasso", heldColor: "#FFFFFF", eyes: "fierce" } }),
-  bee({ id: "us-apollo", name: "Apollo", zone: "us", rarity: 6, element: "storm", role: "striker", perk: "jelly",
+  bee({ id: "us-apollo", name: "Apollo", zone: "us", rarity: 6, element: "light", role: "striker", perk: "jelly",
     burst: strike("Moonshot", 6, "all", ["stun", 0.4]),
     look: { body: "#FFFFFF", stripe: "#3C3B6E", wing: "#DDEBFF", hat: "astronaut", hatColor: "#F5F7FA", hatColor2: "#7FB3FF", held: "none", eyes: "happy" } }),
   bee({ id: "us-diner", name: "Diner", zone: "us", rarity: 2, element: "flame", role: "healer", perk: "honey",
     burst: heal("Bottomless Coffee", 2),
     look: { body: Y, stripe: "#B22234", hat: "cap", hatColor: "#FFFFFF", hatColor2: "#B22234", held: "tea", heldColor: "#6B4226", eyes: "happy" } }),
-  bee({ id: "us-jazz", name: "Jazz", zone: "us", rarity: 4, element: "wave", role: "support", perk: "boost",
+  bee({ id: "us-jazz", name: "Jazz", zone: "us", rarity: 4, element: "shadow", role: "support", perk: "boost",
     burst: rally("Bayou Swing", 4, true),
     look: { body: "#F4C430", stripe: "#3C3B6E", wing: "#E0E8FF", hat: "cap", hatColor: "#3C3B6E", hatColor2: "#C9A227", held: "harp", heldColor: "#C9A227", eyes: "sleepy" } }),
 
@@ -358,7 +360,7 @@ export const BEES: BeeSpecies[] = [
     look: { body: "#C7CEEA", stripe: "#2A3570", wing: "#E8ECFF", hat: "astronaut", hatColor: "#F5F7FA", hatColor2: "#2A3570", held: "shield", heldColor: "#7E8BC4", eyes: "sleepy" } }),
 
   /* ----- Mars ----- */
-  bee({ id: "mars-rover", name: "Rover", zone: "mars", rarity: 3, element: "flame", role: "support", perk: "silver",
+  bee({ id: "mars-rover", name: "Rover", zone: "mars", rarity: 3, element: "storm", role: "support", perk: "silver",
     burst: rally("Dust Drive", 3),
     look: { body: "#F4A261", stripe: "#7A1E12", hat: "goggles", hatColor: "#5C3A2E", held: "wrench", heldColor: "#9AA5B1" } }),
   bee({ id: "mars-dune", name: "Dune", zone: "mars", rarity: 4, element: "flame", role: "guardian", perk: "boost",
@@ -390,7 +392,7 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "jupiter-europa", name: "Europa", zone: "jupiter", rarity: 5, element: "wave", role: "healer", perk: "jelly",
     burst: heal("Frozen Ocean", 5, "regen"),
     look: { body: "#E8F1F8", stripe: "#7FA7C9", wing: "#E3F2FF", hat: "crown", hatColor: "#BFE6FF", hatColor2: "#2F80ED", held: "orb", heldColor: "#9ED8FF", eyes: "happy" } }),
-  bee({ id: "jupiter-titan", name: "Ganymede", zone: "jupiter", rarity: 6, element: "storm", role: "guardian", perk: "jelly",
+  bee({ id: "jupiter-titan", name: "Ganymede", zone: "jupiter", rarity: 6, element: "wave", role: "guardian", perk: "jelly",
     burst: guard("Giant's Shield", 6, true),
     look: { body: "#C9A66B", stripe: "#5C3A1E", wing: "#F4E3C1", hat: "knight", hatColor: "#E9C46A", hatColor2: "#B5452A", held: "shield", heldColor: "#E9C46A", eyes: "fierce" } }),
   bee({ id: "jupiter-jove", name: "Jove", zone: "jupiter", rarity: 7, element: "storm", role: "striker", perk: "jelly",
@@ -410,7 +412,7 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "saturn-titan", name: "Titan", zone: "saturn", rarity: 4, element: "leaf", role: "guardian", perk: "honey",
     burst: guard("Methane Haze", 4),
     look: { body: "#E3C878", stripe: "#5C4A1E", hat: "ring", hatColor: "#C9A66B", held: "shield", heldColor: "#8F7A3A", eyes: "sleepy" } }),
-  bee({ id: "saturn-cassini", name: "Cassini", zone: "saturn", rarity: 5, element: "light", role: "trickster", perk: "silver",
+  bee({ id: "saturn-cassini", name: "Cassini", zone: "saturn", rarity: 5, element: "wave", role: "trickster", perk: "silver",
     burst: trick("Cassini Gap", 5, "weaken"),
     look: { body: "#F7EBC6", stripe: "#3D3A66", wing: "#EDE8FF", hat: "astronaut", hatColor: "#F5F7FA", hatColor2: "#E3C878", held: "orb", heldColor: "#3D3A66", eyes: "happy" } }),
   bee({ id: "saturn-chronos", name: "Chronos", zone: "saturn", rarity: 6, element: "shadow", role: "support", perk: "jelly",
@@ -430,7 +432,7 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "sun-flare", name: "Flare", zone: "sun", rarity: 3, element: "flame", role: "striker", perk: "honey",
     burst: strike("Solar Flare", 3, "one", ["burn", 0.6]),
     look: { body: "#FFB627", stripe: "#C2410C", hat: "sunrays", hatColor: "#FF8A3D", held: "torch", heldColor: "#FF6B3D", eyes: "fierce" } }),
-  bee({ id: "sun-corona", name: "Corona", zone: "sun", rarity: 4, element: "light", role: "healer", perk: "jelly",
+  bee({ id: "sun-corona", name: "Corona", zone: "sun", rarity: 4, element: "flame", role: "healer", perk: "jelly",
     burst: heal("Corona Glow", 4, "cleanse"),
     look: { body: "#FFE066", stripe: "#E8A600", wing: "#FFF6D6", hat: "sunrays", hatColor: "#FFD23F", held: "flower", heldColor: "#FFB627", eyes: "happy" } }),
   bee({ id: "sun-prominence", name: "Prominence", zone: "sun", rarity: 5, element: "flame", role: "support", perk: "silver",
@@ -445,7 +447,7 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "sun-sunspot", name: "Sunspot", zone: "sun", rarity: 4, element: "shadow", role: "trickster", perk: "silver",
     burst: trick("Dark Spot", 4, "burn"),
     look: { body: "#FF8A3D", stripe: "#2A0E06", wing: "#FFE0C9", hat: "sunrays", hatColor: "#7A2E0B", held: "orb", heldColor: "#2A0E06", eyes: "sleepy" } }),
-  bee({ id: "sun-zenith", name: "Zenith", zone: "sun", rarity: 5, element: "light", role: "guardian", perk: "boost",
+  bee({ id: "sun-zenith", name: "Zenith", zone: "sun", rarity: 5, element: "storm", role: "guardian", perk: "boost",
     burst: guard("High Noon", 5, true),
     look: { body: "#FFF3B0", stripe: "#FF8A3D", wing: "#FFFBE6", hat: "sunrays", hatColor: "#FFD23F", hatColor2: "#FF8A3D", held: "shield", heldColor: "#FFB627", eyes: "fierce" } }),
 
@@ -462,7 +464,7 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "comet-coma", name: "Coma", zone: "comet", rarity: 6, element: "light", role: "support", perk: "jelly",
     burst: rally("Glowing Coma", 6, true),
     look: { body: "#F5FDFF", stripe: "#7FDBFF", wing: "#E8FBFF", hat: "crown", hatColor: "#7FDBFF", hatColor2: "#FFFFFF", held: "staff", heldColor: "#E8FBFF", eyes: "sleepy" } }),
-  bee({ id: "comet-perihelia", name: "Perihelia", zone: "comet", rarity: 7, element: "storm", role: "striker", perk: "jelly",
+  bee({ id: "comet-perihelia", name: "Perihelia", zone: "comet", rarity: 7, element: "wave", role: "striker", perk: "jelly",
     burst: strike("Perihelion Dive", 7, "all", ["stun", 0.4]),
     look: { body: "#0E1A3A", stripe: "#7FDBFF", wing: "#BFF0FF", hat: "sunrays", hatColor: "#7FDBFF", hatColor2: "#FFFFFF", held: "sword", heldColor: "#BFF0FF", eyes: "fierce", pattern: "spots" } }),
 
@@ -478,7 +480,7 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "orion-betelgeuse", name: "Betelgeuse", zone: "orion", rarity: 6, element: "flame", role: "striker", perk: "jelly",
     burst: strike("Red Supergiant", 6, "all", ["burn", 0.6]),
     look: { body: "#FF6B3D", stripe: "#2A0F4A", wing: "#FFD6C9", hat: "sunrays", hatColor: "#FF4F4F", hatColor2: "#FFB627", held: "torch", heldColor: "#FF4F4F", eyes: "fierce" } }),
-  bee({ id: "orion-hunter", name: "Orion", zone: "orion", rarity: 7, element: "light", role: "striker", perk: "jelly",
+  bee({ id: "orion-hunter", name: "Orion", zone: "orion", rarity: 7, element: "leaf", role: "striker", perk: "jelly",
     burst: strike("Celestial Hunt", 7, "one", ["stun", 0.5]),
     look: { body: "#FFE9A8", stripe: "#2A0F4A", wing: "#FFF6D6", hat: "laurel", hatColor: "#FFD23F", held: "bat", heldColor: "#E05FD0", eyes: "fierce", pattern: "spots" } }),
 
@@ -488,7 +490,7 @@ export const BEES: BeeSpecies[] = [
   bee({ id: "andromeda-pulsar", name: "Pulsar", zone: "andromeda", rarity: 5, element: "storm", role: "trickster", perk: "silver",
     burst: trick("Neutron Beat", 5, "stun"),
     look: { body: "#E8E4FF", stripe: "#0A0624", wing: "#F0EEFF", hat: "goggles", hatColor: "#6C5CE7", held: "lantern", heldColor: "#FFE9A8", eyes: "fierce" } }),
-  bee({ id: "andromeda-quasar", name: "Quasar", zone: "andromeda", rarity: 5, element: "light", role: "healer", perk: "jelly",
+  bee({ id: "andromeda-quasar", name: "Quasar", zone: "andromeda", rarity: 5, element: "leaf", role: "healer", perk: "jelly",
     burst: heal("Quasar Beacon", 5, "regen"),
     look: { body: "#FFF7E3", stripe: "#6C5CE7", wing: "#FFF1C1", hat: "crown", hatColor: "#FFE9A8", hatColor2: "#6C5CE7", held: "staff", heldColor: "#FFE9A8", eyes: "happy" } }),
   bee({ id: "andromeda-nova", name: "Nova", zone: "andromeda", rarity: 6, element: "flame", role: "guardian", perk: "jelly",

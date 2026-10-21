@@ -66,7 +66,7 @@ export function BattleScreen() {
   const location = useLocation();
   // Built once per visit: an event stage keeps its enemies even if progress changes mid-fight.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const stage = useMemo(() => findStage(stageId, useGame.getState().cleared), [stageId, location.key]);
+  const stage = useMemo(() => findStage(stageId, useGame.getState()), [stageId, location.key]);
   const hasTeam = useGame((s) => s.team.some(Boolean));
   if (!stage) return <Navigate to="/story" replace />;
   // An empty team (e.g. a freshly made preset) cannot fight: pick bees first.

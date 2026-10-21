@@ -211,6 +211,9 @@ function WorkersModal({ initial, onClose }: { initial: { hive: string; slot: num
   const autoAssign = useGame((s) => s.autoAssignWorkers);
   const clearAll = useGame((s) => s.clearWorkers);
   const [sel, setSel] = useState(initial);
+  const [focus, setFocus] = useState<(keyof HiveRates)[]>(HIVE_RESOURCES);
+  const toggleFocus = (k: keyof HiveRates) =>
+    setFocus((f) => (f.includes(k) ? (f.length > 1 ? f.filter((x) => x !== k) : f) : HIVE_RESOURCES.filter((x) => x === k || f.includes(x))));
   const where = new Map(hives.flatMap((h, hi) => h.workers.map((w) => [w, hi] as const)));
   const list = Object.values(bees).sort((a, b) => beeWork(b.id, b) - beeWork(a.id, a));
   const total = totalRates(hives, bees);
@@ -232,10 +235,30 @@ function WorkersModal({ initial, onClose }: { initial: { hive: string; slot: num
         <GameIcon name="work" size={24} /> Workers
       </h3>
       <div className="mb-2 text-sm text-text-secondary">Pick a slot, then a bee. Levels and stars make a bee work better.</div>
+      <div className="mb-2 rounded-tile bg-canvas p-2">
+        <div className="mb-1.5 text-xs font-bold uppercase tracking-wide text-text-muted">Best workers for</div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            className={`chip ${focus.length === HIVE_RESOURCES.length ? "bg-accent text-accent-foreground" : ""}`}
+            onClick={() => setFocus(HIVE_RESOURCES)}
+            aria-pressed={focus.length === HIVE_RESOURCES.length}
+          >
+            All
+          </button>
+          {HIVE_RESOURCES.map((k) => {
+            const on = focus.includes(k) && focus.length < HIVE_RESOURCES.length;
+            return (
+              <button key={k} className={`chip capitalize ${on ? "bg-accent text-accent-foreground" : ""}`} onClick={() => (focus.length === HIVE_RESOURCES.length ? setFocus([k]) : toggleFocus(k))} aria-pressed={on}>
+                <ResourceIcon id={k} size={18} /> {k}
+              </button>
+            );
+          })}
+          <button className="btn btn-sm btn-primary ml-auto" onClick={() => autoAssign(focus)}>
+            <Sparkles size={16} /> Assign
+          </button>
+        </div>
+      </div>
       <div className="mb-2 flex flex-wrap gap-2">
-        <button className="btn btn-sm btn-primary" onClick={autoAssign}>
-          <Sparkles size={16} /> Best team
-        </button>
         <button className="btn btn-sm" onClick={clearAll}>
           <Eraser size={16} /> Clear all
         </button>

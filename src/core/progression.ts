@@ -31,7 +31,7 @@ export function statsAt(species: BeeSpecies, level: number, rank: number): Stats
 export const maxLevel = (species: BeeSpecies) => RARITY[species.rarity].maxLevel;
 
 /** Pollen needed to go from `level` to `level + 1`. */
-export const xpForLevel = (level: number) => Math.round(20 * level ** 1.45);
+export const xpForLevel = (level: number) => Math.round(12 * level ** 1.35);
 
 /** Silver cost of a level up. */
 export const silverForLevel = (level: number) => 10 * level;

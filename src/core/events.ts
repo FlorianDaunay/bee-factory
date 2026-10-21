@@ -138,13 +138,16 @@ const FIRST_CLEAR: Record<EventKind, { ticket: number; jelly: number }[]> = {
   holiday: [{ ticket: 5, jelly: 2 }, { ticket: 8, jelly: 3 }, { ticket: 12, jelly: 4 }],
 };
 
+/** Enemy level of each difficulty, relative to the team: bees win easily at their own level, so Hard goes well above. */
+export const DIFFICULTY_OFFSET = [0, 6, 16];
+
 /**
- * Builds one difficulty of an event. Enemies follow the player's story progress, so events stay
- * a fair fight at any point of the game: Easy a bit below, Normal level, Hard well above.
+ * Builds one difficulty of an event. Enemies follow the team's average level (never above the
+ * story progress), so events stay winnable at any point: Easy at team level, Hard well above.
  */
-export function eventStage(ev: GameEvent, difficulty: number, cleared: Cleared): Stage {
+export function eventStage(ev: GameEvent, difficulty: number, cleared: Cleared, teamLevel = Infinity): Stage {
   const ch = highestChapter(cleared);
-  const level = Math.max(1, stageLevel(ch, 2) + [-5, 0, 7][difficulty]);
+  const level = Math.max(1, Math.min(stageLevel(ch, 2), Math.round(teamLevel)) + DIFFICULTY_OFFSET[difficulty]);
   const waveCount = 2 + difficulty;
   const waves: WaveEnemy[][] = [];
   for (let w = 0; w < waveCount; w++) {
@@ -157,7 +160,7 @@ export function eventStage(ev: GameEvent, difficulty: number, cleared: Cleared):
   const mult = 1 + difficulty * 0.5;
   const rewards: Partial<Resources> = {
     silver: Math.round((90 + ch * 55) * mult),
-    pollen: Math.round((70 + ch * 40) * mult),
+    pollen: Math.round((90 + ch * 55) * mult),
     honey: Math.round((25 + ch * 14) * mult),
   };
   // The event's focus resource pays triple (tickets and jelly come from the first clear instead).
@@ -182,12 +185,12 @@ export function eventStage(ev: GameEvent, difficulty: number, cleared: Cleared):
 }
 
 /** Finds an event stage by id, only while its event is running. */
-export function findEventStage(stageId: string, cleared: Cleared, at = Date.now()): Stage | undefined {
+export function findEventStage(stageId: string, cleared: Cleared, teamLevel = Infinity, at = Date.now()): Stage | undefined {
   if (!isEventStage(stageId)) return undefined;
   const [, eventId, diff] = /^ev:(.+):(\d)$/.exec(stageId) ?? [];
   const ev = activeEvents(at).find((e) => e.id === eventId);
   const d = Number(diff);
-  return ev && d >= 0 && d < DIFFICULTIES.length ? eventStage(ev, d, cleared) : undefined;
+  return ev && d >= 0 && d < DIFFICULTIES.length ? eventStage(ev, d, cleared, teamLevel) : undefined;
 }
 
 /** "2d 5h", "5h 12m", "12m": time left until `end`. */

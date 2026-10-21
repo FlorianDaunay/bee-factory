@@ -4,7 +4,7 @@ import { BeeSprite } from "@/art/BeeSprite";
 import { GameIcon } from "@/art/GameIcon";
 import { ZoneFlag } from "@/art/icons";
 import { BEES, beeById } from "@/core/data/bees";
-import { RARITY, ZONES } from "@/core/data/meta";
+import { ELEMENTS, RARITY, ZONES } from "@/core/data/meta";
 import { powerScore, statsAt } from "@/core/progression";
 import { computeSynergies } from "@/core/synergy";
 import type { ZoneId } from "@/core/types";
@@ -66,6 +66,13 @@ export function SynergyPanel({ ids }: { ids: string[] }) {
           </span>
         ))}
       {syn.homeland && <span className="chip bg-accent/20"><GameIcon name="homeland" size={18} /> Homeland +15%</span>}
+      {syn.unity && (
+        <span className="chip animate-pop bg-accent/20" title={`Every bee is ${ELEMENTS[syn.unity.element].name}: +${syn.unity.pct}% attack, health and gauge`}>
+          <GameIcon name={syn.unity.element} size={18} /> {ELEMENTS[syn.unity.element].name} unity <GameIcon name="atk" size={14} />
+          <GameIcon name="hp" size={14} />
+          <GameIcon name="gauge" size={14} />+{syn.unity.pct}%
+        </span>
+      )}
     </div>
   );
 }

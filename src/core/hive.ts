@@ -154,3 +154,54 @@ export function legacyStored(hive: Hive, now: number): number {
   const work = hive.workers.reduce((a, id) => a + beeById(id).work / 100, 0);
   return Math.floor(minutes * hiveBaseRate(hive) * (1 + work));
 }
+
+/** How much one unit of each resource counts when comparing workers (scaled to its rate vs honey). */
+const RESOURCE_WEIGHT: HiveRates = { honey: 1, pollen: 1 / PERK_POWER.pollen, silver: 1 / PERK_POWER.silver, jelly: 1 / PERK_POWER.jelly };
+
+/** Value of a hive's output for the chosen resources only. */
+export function focusScore(rates: HiveRates, focus: (keyof HiveRates)[]): number {
+  return focus.reduce((a, k) => a + rates[k] * RESOURCE_WEIGHT[k], 0);
+}
+
+/**
+ * Best workers for the resources the player cares about. Biggest hives are filled first; each
+ * slot takes the free bee that adds the most of the chosen resources to that hive. Slots no bee
+ * can help with are then filled with the best all-round workers, so no slot stays idle.
+ */
+export function bestWorkers(hives: Hive[], bees: Record<string, Pick<OwnedBee, "level" | "rank">>, focus: (keyof HiveRates)[]): Record<string, string[]> {
+  const free = new Set(Object.keys(bees));
+  const out = fillWorkers(hives, bees, focus, free, {});
+  return focus.length < HIVE_RESOURCES.length ? fillWorkers(hives, bees, HIVE_RESOURCES, free, out) : out;
+}
+
+function fillWorkers(
+  hives: Hive[],
+  bees: Record<string, Pick<OwnedBee, "level" | "rank">>,
+  focus: (keyof HiveRates)[],
+  free: Set<string>,
+  start: Record<string, string[]>,
+): Record<string, string[]> {
+  const order = [...hives].sort((a, b) => hiveBaseRate(b) - hiveBaseRate(a));
+  const out: Record<string, string[]> = { ...start };
+  for (const h of order) {
+    const workers: string[] = [...(start[h.id] ?? [])];
+    for (let slot = workers.length; slot < WORKERS_PER_HIVE && free.size; slot++) {
+      const base = focusScore(hiveRates({ ...h, workers }, bees), focus);
+      let best: string | null = null;
+      let bestGain = 0;
+      for (const id of free) {
+        const gain = focusScore(hiveRates({ ...h, workers: [...workers, id] }, bees), focus) - base;
+        if (gain > bestGain) {
+          best = id;
+          bestGain = gain;
+        }
+      }
+      // No bee adds anything to the chosen resources: leave the slot empty.
+      if (!best) break;
+      workers.push(best);
+      free.delete(best);
+    }
+    out[h.id] = workers;
+  }
+  return out;
+}

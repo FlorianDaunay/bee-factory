@@ -1,5 +1,5 @@
 import { ZONES } from "./data/meta";
-import type { BeeSpecies, BonusKind, Continent, ZoneId } from "./types";
+import type { BeeSpecies, BonusKind, Continent, Element, ZoneId } from "./types";
 
 export type TeamBonus = Record<BonusKind, number>;
 
@@ -19,7 +19,12 @@ export interface Synergies {
   /** Zones whose 4-bee passive is active. */
   passives: ZoneId[];
   homeland: ZoneId | null;
+  /** Every bee of the team (3 or more) shares this element: bonus to attack, health and gauge. */
+  unity: { element: Element; pct: number } | null;
 }
+
+/** Element unity bonus in %: +10% with 3-5 bees of one element, +20% with a full team of 6. */
+export const unityPct = (count: number) => (count >= 6 ? 20 : count >= 3 ? 10 : 0);
 
 export const emptyBonus = (): TeamBonus => ({ hp: 0, atk: 0, def: 0, rec: 0, spd: 0, crit: 0, gauge: 0, status: 0 });
 
@@ -65,6 +70,15 @@ export function computeSynergies(team: BeeSpecies[]): Synergies {
   const continents = [...contCounts].map(([continent, count]) => ({ continent, count, active: count >= 3 && continent !== "home" }));
   for (const c of continents) if (c.active) bonus.hp += 5;
 
+  let unity: Synergies["unity"] = null;
+  const elements = new Set(unique.map((b) => b.element));
+  if (elements.size === 1 && unityPct(unique.length) > 0) {
+    unity = { element: unique[0].element, pct: unityPct(unique.length) };
+    bonus.atk += unity.pct;
+    bonus.hp += unity.pct;
+    bonus.gauge += unity.pct;
+  }
+
   zones.sort((a, b) => b.count - a.count);
-  return { zones, continents, bonus, passives, homeland };
+  return { zones, continents, bonus, passives, homeland, unity };
 }

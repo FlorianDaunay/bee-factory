@@ -53,7 +53,7 @@ export function StatsGuide({ onClose }: { onClose: () => void }) {
       </div>
 
       <h4 className="mb-1 mt-4 font-extrabold">Elements</h4>
-      <div className="mb-1 text-sm text-text-secondary">Hitting the element a foe is weak to deals ×1.5 damage; the reverse deals ×0.75. Light and Shadow are weak to each other.</div>
+      <div className="mb-1 text-sm text-text-secondary">Hitting the element a foe is weak to deals ×1.5 damage; the reverse deals ×0.75. Light and Shadow are weak to each other. A team where every bee (3 or more) shares one element gets +10% attack, health and gauge (+20% with 6).</div>
       <div className="grid gap-1.5 sm:grid-cols-2">
         {(Object.keys(ELEMENTS) as Element[]).map((e) => {
           const beats = (Object.keys(ELEMENTS) as Element[]).find((d) => weaknessOf(d) === e)!;
